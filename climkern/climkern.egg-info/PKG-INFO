@@ -1,8 +1,0 @@
-Metadata-Version: 2.1
-Name: climkern
-Version: 0.0.8
-Summary: Radiative Kernel Tool for Calculating Climate Feedbacks
-Author: Ty Janoski
-Author-email: janoski@ldeo.columbia.edu
-Requires-Python: >=3.6
-License-File: LICENSE
