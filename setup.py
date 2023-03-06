@@ -8,7 +8,7 @@ PYTHON_REQUIRES = '>=3.6'
 
 INSTALL_REQUIRES = [
     'xarray>=2022.12.0',
-    'cf-xarray>=0.7.6',
+    'cf-xarray>=0.7.2',
     'cftime',
     'xesmf>=0.3.0'
 ]
@@ -16,7 +16,7 @@ INSTALL_REQUIRES = [
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='0.0.11',
+    version='0.0.12',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
