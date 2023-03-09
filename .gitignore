@@ -1,0 +1,9 @@
+.ipynb_checkpoints/
+__pycache__/
+build/
+climkern.egg-info/
+climkern/.ipynb_checkpoints/
+climkern/__pycache__/
+climkern/climkern.egg-info/
+climkern/data/
+dist/
