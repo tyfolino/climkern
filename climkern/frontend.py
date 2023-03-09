@@ -4,6 +4,55 @@ import xesmf as xe
 
 from climkern.util import _make_clim,_get_albedo,_tile_data,_get_kern
 
+class Kernel:
+    def __init__(
+        self,
+        ds,
+        name,
+        logq = False,
+        loc='TOA'
+    ):
+        """
+        Make radiative kernel object
+        Parameters
+        ----------
+        data : xarray Dataset
+            Contains variables corresponding to all-sky and clear-sky
+            radiative fluxes. Note that the variable name requirements are
+            strict: sw/lw[clr]_[a|T|q|Ts]. Will return a ValueError
+            if variables are missing.
+        name : str
+            Name of model from which the kernels were produced.
+        logq : bool, optional
+            Whether the water vapor feedback calculations require
+            the difference in the natural log of specific humidity.
+        loc : str, optional
+            Kernel levels. Options are
+            - 'TOA'
+            - 'sfc'
+            
+        Returns
+        -------
+        kernel : Kernel object
+        """
+        self.loc = loc
+        self.name = name
+        self.logq = logq
+        try:
+            self.sw_a = ds.sw_a
+            self.sw_q = ds.sw_q
+            self.swclr_a = ds.swclr_a
+            self.swclr_q = ds.swclr_q
+            self.PS = ds.PS
+            self.lw_q = ds.lw_q
+            self.lwclr_q = ds.lwclr_q
+            self.lw_t = ds.lw_t
+            self.lw_ts = ds.lw_ts
+            self.lwclr_t = ds.lwclr_t
+            self.lwclr_ts = ds.lwclr_ts
+        except(AttributeError):
+            raise ValueError('Kernel input data is missing required variables.')
+
 def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',loc='TOA'):
     """
     Calculate the SW radiative perturbation (W/m^2) resulting from changes in surface albedo
@@ -49,11 +98,11 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',loc='T
     diff_alb = pert_alb - ctrl_alb_clim_tiled
     
     # read in and regrid surface albedo kernel
-    kern = _get_kern(kern,loc).sw_a
-    regridder = xe.Regridder(kern,diff_alb,method='bilinear')
-    kern = regridder(kern)
+    kernel = Kernel(_get_kern(kern,loc),kern)
+    regridder = xe.Regridder(kernel.sw_a,diff_alb,method='bilinear',reuse_weights=True)
+    kernel = regridder(kernel.sw_a)
     
     # calculate feedbacks
-    kern_tiled = _tile_data(kern,diff_alb)
-    rad_pert = diff_alb * kern_tiled * 100
+    kernel_tiled = _tile_data(kernel,diff_alb)
+    rad_pert = diff_alb * kernel_tiled * 100
     return rad_pert

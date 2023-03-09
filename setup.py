@@ -4,11 +4,11 @@ DISTNAME = 'climkern'
 DESCRIPTION = 'Radiative Kernel Tool for Calculating Climate Feedbacks'
 AUTHOR = 'Ty Janoski'
 AUTHOR_EMAIL = 'janoski@ldeo.columbia.edu'
-PYTHON_REQUIRES = '>=3.6'
+PYTHON_REQUIRES = '>=3.7'
 
 INSTALL_REQUIRES = [
-    'xarray>=2022.12.0',
-    'cf-xarray>=0.7.2',
+    'xarray>=0.16.2',
+    'cf-xarray>=0.5.1',
     'cftime',
     'xesmf>=0.3.0'
 ]
@@ -16,7 +16,7 @@ INSTALL_REQUIRES = [
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='0.0.12',
+    version='0.0.14',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,

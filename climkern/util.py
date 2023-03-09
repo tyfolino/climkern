@@ -16,8 +16,10 @@ def _tile_data(to_tile,new_shape):
 def _get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
     path = 'data/'+loc + '_' + str(name) + "_Kerns.nc"
-    data = pkgutil.get_data('climkern',path)
-    return xr.open_dataset(data)
+    data = xr.open_dataset(pkgutil.get_data('climkern',path))
+    if(('latitude' in data.coords) or ('longitude' in data.coords)):
+        data = data.rename({'latitude':'lat','longitude':'lon'})
+    return data
 
 def _make_clim(da):
     "Produce monthly climatology of model field."
