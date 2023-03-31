@@ -2,9 +2,8 @@ import xarray as xr
 import cf_xarray as cfxr
 import xesmf as xe
 import pkgutil
-import climkern as ck
 
-def _tile_data(to_tile,new_shape):
+def tile_data(to_tile,new_shape):
     """tile dataset along time axis to match another dataset"""
     if(len(new_shape.time) % 12 != 0):
         raise ValueError('dataset time dimension must be divisible by 12')
@@ -13,7 +12,7 @@ def _tile_data(to_tile,new_shape):
     tiled['time'] = new_shape.time
     return(tiled)
 
-def _get_kern(name,loc='TOA'):
+def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
     path = 'data/'+loc + '_' + str(name) + "_Kerns.nc"
     data = xr.open_dataset(pkgutil.get_data('climkern',path))
@@ -21,10 +20,10 @@ def _get_kern(name,loc='TOA'):
         data = data.rename({'latitude':'lat','longitude':'lon'})
     return data
 
-def _make_clim(da):
+def make_clim(da):
     "Produce monthly climatology of model field."
     time = _get_time(da) # also checks to see if time exists
-    clim = da.groupby(time.dt.month).mean(dim='time').rename({'month':'time'})
+    clim = da.groupby(time.dt.month).mean(dim='time',skipna=True).rename({'month':'time'})
     return clim
 
 def _get_lat_lon(da):
@@ -49,7 +48,7 @@ def _get_time(da):
         raise ValueError('dataset does not have a dimension called "time"')
     return time
 
-def _get_albedo(SWup,SWdown):
+def get_albedo(SWup,SWdown):
     """Calculate the surface albedo as the ratio of upward to downward sfc shortwave."""
     # avoid dividing by 0 and assign 0 to those grid boxes
     return (SWup/SWdown.where(SWdown>0)).fillna(0)
