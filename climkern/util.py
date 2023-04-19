@@ -52,3 +52,10 @@ def get_albedo(SWup,SWdown):
     """Calculate the surface albedo as the ratio of upward to downward sfc shortwave."""
     # avoid dividing by 0 and assign 0 to those grid boxes
     return (SWup/SWdown.where(SWdown>0)).fillna(0)
+
+def check_plev(kern,output):
+    """Make sure the vertical pressure units of the kernel match those of the
+    model output. If not, return the kernel with updated pressure levels."""
+    if(output.plev.units == 'Pa'):
+        kern['plev'] = kern.plev * 100
+    return(kern)
