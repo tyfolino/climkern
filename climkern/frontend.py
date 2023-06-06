@@ -50,6 +50,7 @@ class Kernel:
             self.lw_ts = ds.lw_ts
             self.lwclr_t = ds.lwclr_t
             self.lwclr_ts = ds.lwclr_ts
+            self.plev = ds.plev
         except(AttributeError):
             raise ValueError('Kernel input data is missing required variables.')
 
@@ -107,7 +108,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',loc='T
     rad_pert = diff_alb * kernel_tiled * 100
     return rad_pert
 
-def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,kern='GFDL',loc='TOA'):
+def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,kern,loc='TOA'):
     """
     Calculate the LW radiative perturbations (W/m^2) from changes in surface skin
     and air temperature at the TOA or surface with the specified radiative kernel.
@@ -178,8 +179,11 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,k
     ta_kernel = tile_data(regridder(kernel.lw_t),diff_ta)
     ts_kernel = tile_data(regridder(kernel.lw_ts),diff_ta)
 
-    # ignore vertical levels that do not exist in the kernel
-    diff_ta = diff_ta.sel(plev=ta_kernel.plev)    
+    # regrid diff_ta to kernel pressure levels
+    diff_ta = diff_ta.interp(plev=kernel.plev)
+    
+    # # ignore vertical levels that do not exist in the kernel
+    # diff_ta = diff_ta.sel(plev=ta_kernel.plev)    
     
     # construct a 4D DataArray corresponding to layer thickness
     # for vertical integration later

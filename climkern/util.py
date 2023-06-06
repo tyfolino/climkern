@@ -14,11 +14,9 @@ def tile_data(to_tile,new_shape):
 
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
-    path = 'data/'+loc + '_' + str(name) + "_Kerns.nc"
+    path = 'data/'+name + '/' +loc + '_' + str(name) + "_Kerns.nc"
     data = xr.open_dataset(pkgutil.get_data('climkern',path))
-    if(('latitude' in data.coords) or ('longitude' in data.coords)):
-        data = data.rename({'latitude':'lat','longitude':'lon'})
-    return data
+    return _check_coords(data)
 
 def make_clim(da):
     "Produce monthly climatology of model field."
@@ -26,19 +24,36 @@ def make_clim(da):
     clim = da.groupby(time.dt.month).mean(dim='time',skipna=True).rename({'month':'time'})
     return clim
 
-def _get_lat_lon(da):
-    """Return lat and lon from da."""
-    if ('lat' in da and 'lon' in da):
-        return da.lat, da.lon
+def _check_coords(da):
+    """Try to grab time, lat, lon, and plev coordinates
+    from DataArray.
+    """
+    # check to see if lat/lon are CF-compliant for regridding
     try:
         lat = da.cf['latitude']
         lon = da.cf['longitude']
     except (KeyError, AttributeError, ValueError):
         # KeyError if cfxr doesn't detect the coords
         # AttributeError if ds is a dict
-        raise ValueError('dataset must include "lat"/"lon" dimension or be CF-compliant')
-    return lat, lon
+        raise ValueError('horizontal coordinates must be CF-compliant')
 
+    # grab vertical level
+    vert_names = ['plev','player','lev']
+    for v in vert_names:
+        if(v in da.dims):
+            vert_coord = v
+            break
+        elif(v == vert_names[-1]):
+            raise AttributeError('Could not find vertical coordinate.')
+        da = da.rename({vert_coord:'plev'})
+
+    # time dimension
+    if('time' not in da.dims):
+        try:
+            da = da.rename({'month':'time'})
+        except(ValueError):
+            raise AttributeError('There is no dimension named \'time\' or \'month\'.')
+            
 def _get_time(da):
     """Return the time dimension from ds."""
     try:
