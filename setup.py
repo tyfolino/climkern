@@ -11,12 +11,14 @@ INSTALL_REQUIRES = [
     'cf-xarray>=0.5.1',
     'cftime',
     'xesmf>=0.3.0'
+    'io',
+    'h5netcdf'
 ]
 
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='0.0.15',
+    version='0.0.16',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,

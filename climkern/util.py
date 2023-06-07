@@ -2,6 +2,7 @@ import xarray as xr
 import cf_xarray as cfxr
 import xesmf as xe
 import pkgutil
+import io
 
 def tile_data(to_tile,new_shape):
     """tile dataset along time axis to match another dataset"""
@@ -15,7 +16,10 @@ def tile_data(to_tile,new_shape):
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
     path = 'data/'+name + '/' +loc + '_' + str(name) + "_Kerns.nc"
-    data = xr.open_dataset(pkgutil.get_data('climkern',path))
+    try:
+        data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)))
+    except(ValueError):
+        data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)),decode_times=False)
     return _check_coords(data)
 
 def make_clim(da):
@@ -29,9 +33,10 @@ def _check_coords(da):
     from DataArray.
     """
     # check to see if lat/lon are CF-compliant for regridding
+    # if they are, rename to lat/lon for xesmf
     try:
-        lat = da.cf['latitude']
-        lon = da.cf['longitude']
+        da = da.rename({da.cf['latitude'].name:'lat',
+                       da.cf['longitude'].name:'lon'})
     except (KeyError, AttributeError, ValueError):
         # KeyError if cfxr doesn't detect the coords
         # AttributeError if ds is a dict
@@ -45,7 +50,7 @@ def _check_coords(da):
             break
         elif(v == vert_names[-1]):
             raise AttributeError('Could not find vertical coordinate.')
-        da = da.rename({vert_coord:'plev'})
+    da = da.rename({vert_coord:'plev'})
 
     # time dimension
     if('time' not in da.dims):
@@ -53,6 +58,8 @@ def _check_coords(da):
             da = da.rename({'month':'time'})
         except(ValueError):
             raise AttributeError('There is no dimension named \'time\' or \'month\'.')
+
+    return(da)
             
 def _get_time(da):
     """Return the time dimension from ds."""
@@ -70,7 +77,8 @@ def get_albedo(SWup,SWdown):
 
 def check_plev(kern,output):
     """Make sure the vertical pressure units of the kernel match those of the
-    model output. If not, return the kernel with updated pressure levels."""
+    model output. If not, return the kern with updated pressure levels."""
     if(output.plev.units == 'Pa'):
-        kern['plev'] = kern.plev * 100
-    return(kern)
+        kern['plev'] = output.plev * 100
+        kern.plev.attrs['units'] = 'Pa'
+    return(output)

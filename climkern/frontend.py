@@ -54,7 +54,7 @@ class Kernel:
         except(AttributeError):
             raise ValueError('Kernel input data is missing required variables.')
 
-def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',loc='TOA'):
+def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern,loc='TOA'):
     """
     Calculate the SW radiative perturbation (W/m^2) resulting from changes in surface albedo
     at the TOA or surface with the specific radiative kernel. Horizontal resolution
@@ -99,7 +99,8 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',loc='T
     diff_alb = pert_alb - ctrl_alb_clim_tiled
     
     # read in and regrid surface albedo kernel
-    kernel = Kernel(get_kern(kern,loc),kern)
+    # kernel = Kernel(get_kern(kern,loc),kern)
+    kernel = get_kern(kern,loc)
     regridder = xe.Regridder(kernel.sw_a,diff_alb,method='bilinear',reuse_weights=True)
     kernel = regridder(kernel.sw_a)
     
@@ -168,13 +169,14 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,k
     ctrl_ta_clim = make_clim(ctrl_ta.where(ctrl_ps > ctrl_ta.plev))
     ctrl_ts_clim = make_clim(ctrl_ts)
     
-    # calculate change in Ta/Ts
+    # calculate change in Ta & Ts
     diff_ta = (pert_ta - tile_data(ctrl_ta_clim,pert_ta)).where(
         pert_ps > pert_ta.plev).where(pert_trop < pert_ta.plev)
     diff_ts = pert_ts - tile_data(ctrl_ts_clim,pert_ts)
     
     # read in and regrid temperature kernel
-    kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
+    # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
+    kernel = check_plev(get_kern(kern,loc),diff_ta)
     regridder = xe.Regridder(kernel.lw_t,diff_ts,method='bilinear',reuse_weights=True)
     ta_kernel = tile_data(regridder(kernel.lw_t),diff_ta)
     ts_kernel = tile_data(regridder(kernel.lw_ts),diff_ta)
