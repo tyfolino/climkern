@@ -78,7 +78,9 @@ def get_albedo(SWup,SWdown):
 def check_plev(kern,output):
     """Make sure the vertical pressure units of the kernel match those of the
     model output. If not, return the kern with updated pressure levels."""
+    is_Pa = False
     if(output.plev.units == 'Pa'):
-        kern['plev'] = output.plev * 100
+        kern['plev'] = kern.plev * 100
         kern.plev.attrs['units'] = 'Pa'
-    return(output)
+        is_Pa = True
+    return(kern,is_Pa)

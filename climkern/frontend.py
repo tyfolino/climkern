@@ -166,51 +166,66 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,k
         lat, and lon.
     """
     # mask values below the surface, make climatology
-    ctrl_ta_clim = make_clim(ctrl_ta.where(ctrl_ps > ctrl_ta.plev))
+    # ctrl_ta_clim = make_clim(ctrl_ta.where(ctrl_ps > ctrl_ta.plev))
+    ctrl_ta_clim = make_clim(ctrl_ta)
     ctrl_ts_clim = make_clim(ctrl_ts)
     
     # calculate change in Ta & Ts
-    diff_ta = (pert_ta - tile_data(ctrl_ta_clim,pert_ta)).where(
-        pert_ps > pert_ta.plev).where(pert_trop < pert_ta.plev)
+    # diff_ta = (pert_ta - tile_data(ctrl_ta_clim,pert_ta)).where(
+    #     pert_ps > pert_ta.plev).where(pert_trop < pert_ta.plev)
+    diff_ta = (pert_ta - tile_data(ctrl_ta_clim,pert_ta))
     diff_ts = pert_ts - tile_data(ctrl_ts_clim,pert_ts)
     
     # read in and regrid temperature kernel
     # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
-    kernel = check_plev(get_kern(kern,loc),diff_ta)
+    kernel,is_Pa = check_plev(get_kern(kern,loc),diff_ta)
     regridder = xe.Regridder(kernel.lw_t,diff_ts,method='bilinear',reuse_weights=True)
     ta_kernel = tile_data(regridder(kernel.lw_t),diff_ta)
     ts_kernel = tile_data(regridder(kernel.lw_ts),diff_ta)
 
     # regrid diff_ta to kernel pressure levels
-    diff_ta = diff_ta.interp(plev=kernel.plev)
-    
-    # # ignore vertical levels that do not exist in the kernel
-    # diff_ta = diff_ta.sel(plev=ta_kernel.plev)    
+    diff_ta = diff_ta.interp_like(ta_kernel)
     
     # construct a 4D DataArray corresponding to layer thickness
     # for vertical integration later
+    # this is achieved by finding the midpoints between pressure levels
+    # and bounding that array with surface pressure below
+    # and TOA (p=0) above
     aligned = xr.align(diff_ta.plev[1:],diff_ta.plev[:-1],join='override')
     mids = xr.broadcast((aligned[0] + aligned[1])/2,pert_ps)[0]
     ps_expand = pert_ps.expand_dims(dim={"plev":[diff_ta.plev[0]]},axis=1)
     
     TOA = xr.zeros_like(ps_expand)
     TOA['plev']=ps_expand.plev*0
-    
-    ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
+
+    # this if statement accounts for potentially reversed pressure axis direction
+    if(diff_ta.plev[0] > diff_ta.plev[-1]):
+        ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
+    else:
+        ilevs = xr.concat([TOA,mids,ps_expand],dim='plev')
+
+    # make points above tropopause equal to tropopause height
+    # make points below surface pressure equal to surface pressure
     ilevs = ilevs.where(ilevs>pert_trop,pert_trop).where(ilevs<pert_ps,pert_ps)
-    
-    dp = -1 * ilevs.diff(dim='plev')
+
+    # get the layer thickness by taking finite difference along pressure axis
+    dp = ilevs.diff(dim='plev')
+    # if dp is in Pascals, just divide by 100 to make it hPa
+    if(is_Pa == True):
+        dp = dp/100
+
+    # override pressure axis so xarray doesn't throw a fit
     dp['plev'] = diff_ta.plev
                     
     # calculate feedbacks
     # for lapse rate, use the deviation of the air temperature response
     # from vertically uniform warming
-    lr_feedback = ((ta_kernel * (diff_ta - diff_ts).fillna(0)) * dp/10000
+    lr_feedback = ((ta_kernel * (diff_ta - diff_ts).fillna(0)) * dp/100
                   ).sum(dim='plev')
     
     # for planck, assume vertically uniform warming and 
     # account for surface temperature change
-    planck_feedback = ((ts_kernel * diff_ts) + (ta_kernel * xr.broadcast(
-        diff_ts,diff_ta)[0].fillna(0) * dp/10000).sum(dim='plev'))
+    planck_feedback = ((ts_kernel * diff_ts * -1) + (ta_kernel * xr.broadcast(
+        diff_ts,diff_ta)[0].fillna(0) * dp/-100).sum(dim='plev'))
        
     return(lr_feedback,planck_feedback)
