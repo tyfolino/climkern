@@ -79,8 +79,12 @@ def check_plev(kern,output):
     """Make sure the vertical pressure units of the kernel match those of the
     model output. If not, return the kern with updated pressure levels."""
     is_Pa = False
-    if(output.plev.units == 'Pa'):
+    if((output.plev.units == 'Pa') and (kern.plev.units != 'Pa')):
         kern['plev'] = kern.plev * 100
         kern.plev.attrs['units'] = 'Pa'
+        is_Pa = True
+    elif((kern.plev.units == 'Pa') and (output.plev.units != 'Pa')):
+        output['plev'] = output.plev * 100
+        output.plev.attrs['units'] = 'Pa'
         is_Pa = True
     return(kern,is_Pa)
