@@ -12,7 +12,8 @@ INSTALL_REQUIRES = [
     'cftime',
     'xesmf>=0.3.0',
     'h5netcdf',
-    'esmpy'
+    'esmpy',
+    'hdf5=1.12.2'
 ]
 
 setup(
