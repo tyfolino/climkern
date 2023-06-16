@@ -11,7 +11,8 @@ INSTALL_REQUIRES = [
     'cf-xarray>=0.5.1',
     'cftime',
     'xesmf>=0.3.0',
-    'h5netcdf'
+    'h5netcdf',
+    'esmpy'
 ]
 
 setup(
