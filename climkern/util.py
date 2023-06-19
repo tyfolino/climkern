@@ -1,8 +1,7 @@
 import xarray as xr
 import cf_xarray as cfxr
 import xesmf as xe
-import pkgutil
-import io
+from importlib_resources import files
 
 def tile_data(to_tile,new_shape):
     """tile dataset along time axis to match another dataset"""
@@ -13,13 +12,22 @@ def tile_data(to_tile,new_shape):
     tiled['time'] = new_shape.time
     return(tiled)
 
+# def get_kern(name,loc='TOA'):
+#     """read in kernel from local directory"""
+#     path = 'data/'+name + '/' +loc + '_' + str(name) + "_Kerns.nc"
+#     try:
+#         data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)))
+#     except(ValueError):
+#         data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)),decode_times=False)
+#     return _check_coords(data)
+
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
     path = 'data/'+name + '/' +loc + '_' + str(name) + "_Kerns.nc"
     try:
-        data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)))
+        data = xr.open_dataset(files('climkern').joinpath(path))
     except(ValueError):
-        data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)),decode_times=False)
+        data = xr.open_dataset(files('climkern').joinpath(path),decode_times=False)
     return _check_coords(data)
 
 def make_clim(da):
