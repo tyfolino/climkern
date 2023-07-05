@@ -101,7 +101,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern,loc='TOA'):
     # read in and regrid surface albedo kernel
     # kernel = Kernel(get_kern(kern,loc),kern)
     kernel = get_kern(kern,loc)
-    regridder = xe.Regridder(kernel.sw_a,diff_alb,method='bilinear',reuse_weights=True)
+    regridder = xe.Regridder(kernel.sw_a,diff_alb,method='bilinear',reuse_weights=False)
     kernel = regridder(kernel.sw_a)
     
     # calculate feedbacks
@@ -179,7 +179,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,k
     # read in and regrid temperature kernel
     # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
     kernel,is_Pa = check_plev(get_kern(kern,loc),diff_ta)
-    regridder = xe.Regridder(kernel.lw_t,diff_ts,method='bilinear',reuse_weights=True)
+    regridder = xe.Regridder(kernel.lw_t,diff_ts,method='bilinear',reuse_weights=False)
     ta_kernel = tile_data(regridder(kernel.lw_t),diff_ta)
     ts_kernel = tile_data(regridder(kernel.lw_ts),diff_ta)
 
