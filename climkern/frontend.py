@@ -200,18 +200,20 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,k
     TOA = xr.zeros_like(ps_expand)
     TOA['plev']=ps_expand.plev*0
 
-    # this if statement accounts for potentially reversed pressure axis direction
+    # this if/else statement accounts for potentially reversed pressure axis direction
     if(diff_ta.plev[0] > diff_ta.plev[-1]):
         ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
+        sign_change = -1
     else:
         ilevs = xr.concat([TOA,mids,ps_expand],dim='plev')
+        sign_change = 1
 
     # make points above tropopause equal to tropopause height
     # make points below surface pressure equal to surface pressure
     ilevs = ilevs.where(ilevs>pert_trop,pert_trop).where(ilevs<pert_ps,pert_ps)
 
     # get the layer thickness by taking finite difference along pressure axis
-    dp = ilevs.diff(dim='plev')
+    dp = sign_change * ilevs.diff(dim='plev')
     # if dp is in Pascals, just divide by 100 to make it hPa
     if(is_Pa == True):
         dp = dp/100
@@ -227,7 +229,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,k
     
     # for planck, assume vertically uniform warming and 
     # account for surface temperature change
-    planck_feedback = ((ts_kernel * diff_ts * -1) + (ta_kernel * xr.broadcast(
-        diff_ts,diff_ta)[0].fillna(0) * dp/-100).sum(dim='plev'))
+    planck_feedback = ((ts_kernel * diff_ts) + (ta_kernel * xr.broadcast(
+        diff_ts,diff_ta)[0].fillna(0) * dp/100).sum(dim='plev'))
        
     return(lr_feedback,planck_feedback)
