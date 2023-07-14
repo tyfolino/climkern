@@ -43,9 +43,12 @@ def _check_coords(da):
     # check to see if lat/lon are CF-compliant for regridding
     # if they are, rename to lat/lon for xesmf
     try:
-        da = da.rename({da.cf['latitude'].name:'lat',
-                       da.cf['longitude'].name:'lon'})
-    except (KeyError, AttributeError, ValueError):
+        da = da.rename_dims({da.cf['latitude'].name:'lat',
+                             da.cf['longitude'].name:'lon'})
+    except(ValueError):
+        # ValueError if the dims are already named lat/lon
+        pass
+    except (KeyError, AttributeError):
         # KeyError if cfxr doesn't detect the coords
         # AttributeError if ds is a dict
         raise ValueError('horizontal coordinates must be CF-compliant')
@@ -58,7 +61,10 @@ def _check_coords(da):
             break
         elif(v == vert_names[-1]):
             raise AttributeError('Could not find vertical coordinate.')
-    da = da.rename({vert_coord:'plev'})
+    try:
+        da = da.rename_dims({vert_coord:'plev'})
+    except(ValueError):
+        pass
 
     # time dimension
     if('time' not in da.dims):
@@ -94,5 +100,7 @@ def check_plev(kern,output):
     elif((kern.plev.units == 'Pa') and (output.plev.units != 'Pa')):
         output['plev'] = output.plev * 100
         output.plev.attrs['units'] = 'Pa'
+        is_Pa = True
+    elif((kern.plev.units == 'Pa') and (output.plev.units == 'Pa')):
         is_Pa = True
     return(kern,is_Pa)
