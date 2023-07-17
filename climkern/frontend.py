@@ -213,7 +213,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,pert_trop,k
     ilevs = ilevs.where(ilevs>pert_trop,pert_trop).where(ilevs<pert_ps,pert_ps)
 
     # get the layer thickness by taking finite difference along pressure axis
-    dp = sign_change * ilevs.diff(dim='plev')
+    dp = sign_change * ilevs.diff(dim='plev',label='lower')
     # if dp is in Pascals, just divide by 100 to make it hPa
     if(is_Pa == True):
         dp = dp/100
