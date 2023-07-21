@@ -237,7 +237,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     return(lr_feedback,planck_feedback)
 
 
-def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA'):
+def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq=False):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -274,6 +274,10 @@ def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA'):
         String specifying level at which radiative perturbations are desired, either TOA or sfc.
         Defaults to TOA
 
+    logq : boolean
+        Specifies whether to use the natural log of the specific humidity to calculate the
+        water vapor feedbacks. Defaults to False.
+
     Returns
     -------
     lw_q_feedback : xarray DataArray
@@ -300,16 +304,26 @@ def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA'):
         conv_factor = 1000
 
     # calculate change in q
-    diff_q = (pert_q - tile_data(ctrl_q_clim,pert_q))
+    if(logq==False):
+        diff_q = pert_q - tile_data(ctrl_q_clim,pert_q)
+    elif((logq==True) and (kern=='CAM5')):
+        diff_q = np.log(pert_q) - np.log(tile_data(ctrl_q_clim,pert_q))
+    else:
+        raise NotImplementedError('Only CAM5 has kernels normalized for the '+
+                                  'change in log(q).')
     
     # read in and regrid water vapor kernel
     # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
-    kernel,is_Pa = ck.util.check_plev(ck.util.get_kern('BMRC','TOA'),diff_q)
+    kernel,is_Pa = check_plev(get_kern(kern,'TOA'),diff_q)
     regridder = xe.Regridder(kernel.lw_q,diff_q,method='bilinear',
                              extrap_method="nearest_s2d",
                              reuse_weights=False,periodic=True)
-    qlw_kernel = ck.util.tile_data(regridder(kernel.lw_q),diff_q)
-    qsw_kernel = ck.util.tile_data(regridder(kernel.sw_q),diff_q)
+    if(logq==False):
+        qlw_kernel = tile_data(regridder(kernel.lw_q),diff_q)
+        qsw_kernel = tile_data(regridder(kernel.sw_q),diff_q)
+    else:           
+        qlw_kernel = tile_data(regridder(kernel.lw_logq),diff_q)
+        qsw_kernel = tile_data(regridder(kernel.sw_logq),diff_q)        
 
     # regrid diff_q to kernel pressure levels
     diff_q = diff_q.interp_like(qlw_kernel)
