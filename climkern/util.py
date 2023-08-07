@@ -2,6 +2,8 @@ import xarray as xr
 import cf_xarray as cfxr
 import xesmf as xe
 from importlib_resources import files
+import warnings
+import numpy as np
 
 def tile_data(to_tile,new_shape):
     """tile dataset along time axis to match another dataset"""
@@ -11,15 +13,6 @@ def tile_data(to_tile,new_shape):
         int(len(new_shape.time)/12))],dim='time')
     tiled['time'] = new_shape.time
     return(tiled)
-
-# def get_kern(name,loc='TOA'):
-#     """read in kernel from local directory"""
-#     path = 'data/'+name + '/' +loc + '_' + str(name) + "_Kerns.nc"
-#     try:
-#         data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)))
-#     except(ValueError):
-#         data = xr.open_dataset(io.BytesIO(pkgutil.get_data('climkern',path)),decode_times=False)
-#     return _check_coords(data)
 
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
@@ -104,3 +97,80 @@ def check_plev(kern,output):
     elif((kern.plev.units == 'Pa') and (output.plev.units == 'Pa')):
         is_Pa = True
     return(kern,is_Pa)
+
+def __calc_qs__(temp):
+    """Calculate either the saturated specific humidity or mixing ratio
+    given temperature and pressure."""
+    if(temp.plev.units=='Pa'):
+        pres = temp.plev/100
+    elif(temp.plev.units=='hPa'):
+        pres = temp.plev
+    else:
+        warnings.warn('Warning: Cannot determine units of pressure \
+        coordinate. Assuming units are hPa.')
+
+    if(temp.units=='K'):
+        temp_c = temp - 273.15
+        temp_c.attrs = temp.attrs
+        temp_c['units'] = 'C'
+    elif(temp.units=='C'):
+        temp_c = temp
+    else:
+        warnings.warn('Warning: Cannot determine units of temperature. \
+        Assuming Kelvin.')
+        temp_c = temp - 273.15
+        temp_c.attrs = temp.attrs
+        temp_c['units'] = 'C'
+
+    # Buck 1981 equation for saturated vapor pressure
+    esl = (1.0007 + 3.46e-6 * pres) * 6.1121 * np.exp(
+        (17.502 * temp_c)/(240.97+temp_c))
+    esi = (1.0003 + 4.18e-6 * pres) * 6.1115 * np.exp(
+        (22.452*temp_c)/(272.55 + temp_c))
+
+    # conversion from vapor pressure to mixing ratio
+    wsl = 0.622 * esl / (pres - esl)
+    wsi = 0.622 * esi / (pres - esi)
+
+    # use liquid water w when temp is above freezing
+    ws = xr.where(temp_c>0,wsl,wsi)
+
+    # convert to specific humidity
+    qs = ws / (1+ws)
+    qs['units'] = 'kg/kg'
+    return(qs)
+
+def calc_q_norm(ctrl_ta,ctrl_q,logq=False):
+    """Calculate the change in specific humidity for 1K warming
+    assuming fixed relative humidity."""
+
+    if(ctrl_q.units=='g/kg'):
+        ctrl_q = ctrl_q/1000
+
+    # get saturated specific humidity from control air temps
+    qs0 = __calc_qs__(ctrl_ta)
+
+    # RH = specific humidity / sat. specific humidity
+    RH = ctrl_q / qs0
+
+    # make a DataArray for the temperature plus 1K
+    ta1K = ctrl_ta + 1
+    ta1K.attrs = ctrl_ta.attrs
+    qs1K = __calc_qs__(ta1K)
+
+    if(logq==False):
+        # get the new specific humidity using the same RH
+        q1K = qs1K * RH
+        q1K['units'] = 'kg/kg'
+    
+        # take the difference
+        dq1K = 1000 * (q1K - ctrl_q)
+        dq1K['units'] = 'g/kg/K'
+
+        return(dq1K)
+    else:
+        dqsdT = qs1K - qs0
+        dqsdT = ((RH / ctrl_q) * dqsdT * 1000)
+        dqsdt['units'] = 'g/kg/K'
+
+        return(dq1K)

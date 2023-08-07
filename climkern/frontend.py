@@ -3,7 +3,8 @@ import cf_xarray as cfxr
 import xesmf as xe
 import warnings
 
-from climkern.util import make_clim,get_albedo,tile_data,get_kern, check_plev
+from climkern.util import make_clim,get_albedo,tile_data,get_kern,\
+check_plev,calc_q_norm
 
 # class Kernel:
 #     def __init__(
@@ -237,7 +238,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     return(lr_feedback,planck_feedback)
 
 
-def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq=False):
+def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq=False):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -246,9 +247,14 @@ def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq
     Parameters
     ----------
     ctrl_q : xarray DataArray
-        Contains specific on pressure levels in the control simulation.
+        Contains specific humidity on pressure levels in the control simulation.
         Must be 4D with coords of time, lat, lon, and plev with units of either
         "1", "kg/kg", or "g/kg".
+
+    ctrl_ta : xarray DataArray
+        Contains air temperature on pressure levels in the control simulation.
+        Must be 4D with coords of time, lat, lon, and plev with units of either
+        "K" or "C".
         
     ctrl_ps : xarray DataArray
         Contains the surface pressure in the control simulation. Must
@@ -306,11 +312,8 @@ def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq
     # calculate change in q
     if(logq==False):
         diff_q = pert_q - tile_data(ctrl_q_clim,pert_q)
-    elif((logq==True) and (kern=='CAM5')):
+    elif((logq==True)):
         diff_q = np.log(pert_q) - np.log(tile_data(ctrl_q_clim,pert_q))
-    else:
-        raise NotImplementedError('Only CAM5 has kernels normalized for the '+
-                                  'change in log(q).')
     
     # read in and regrid water vapor kernel
     # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
@@ -318,15 +321,14 @@ def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq
     regridder = xe.Regridder(kernel.lw_q,diff_q,method='bilinear',
                              extrap_method="nearest_s2d",
                              reuse_weights=False,periodic=True)
-    if(logq==False):
-        qlw_kernel = tile_data(regridder(kernel.lw_q),diff_q)
-        qsw_kernel = tile_data(regridder(kernel.sw_q),diff_q)
-    else:           
-        qlw_kernel = tile_data(regridder(kernel.lw_logq),diff_q)
-        qsw_kernel = tile_data(regridder(kernel.sw_logq),diff_q)        
+
+    qlw_kernel = tile_data(regridder(kernel.lw_q),diff_q)
+    qsw_kernel = tile_data(regridder(kernel.sw_q),diff_q)  
+    norm = tile_data(regridder(calc_q_norm(ctrl_ta,ctrl_q,logq=logq)
 
     # regrid diff_q to kernel pressure levels
     diff_q = diff_q.interp_like(qlw_kernel)
+    norm = norm.interp_like(qlw_kernel)
     
     # construct a 4D DataArray corresponding to layer thickness
     # for vertical integration later
@@ -362,8 +364,7 @@ def calc_q_feedbacks(ctrl_q,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq
     dp['plev'] = diff_q.plev
                     
     # calculate feedbacks
-    # first, we need to see if the units of diff_q a
-    qlw_feedback = (qlw_kernel * diff_q * conv_factor * dp/100).sum(dim='plev')
-    qsw_feedback = (qsw_kernel * diff_q * conv_factor * dp/100).sum(dim='plev')
+    qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/100).sum(dim='plev')
+    qsw_feedback = (qsw_kernel/norm * diff_q * conv_factor * dp/100).sum(dim='plev')
     
     return(qlw_feedback,qsw_feedback)
