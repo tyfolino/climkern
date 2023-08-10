@@ -171,6 +171,6 @@ def calc_q_norm(ctrl_ta,ctrl_q,logq=False):
     else:
         dqsdT = qs1K - qs0
         dqsdT = ((RH / ctrl_q) * dqsdT * 1000)
-        dqsdt['units'] = 'g/kg/K'
+        dqsdT['units'] = 'g/kg/K'
 
         return(dq1K)

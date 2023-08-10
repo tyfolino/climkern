@@ -296,8 +296,9 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
         from changes in specific humidity (shortwave). Has coordinates of time, 
         lat, and lon.
     """
-    # mask values below the surface, make climatology
+    # make climatology
     ctrl_q_clim = make_clim(ctrl_q)
+    ctrl_ta_clim = make_clim(ctrl_ta)
 
     # if q has units of unity or kg/kg, we will have to 
     # multiply by 1000 later on to make it g/kg
@@ -324,11 +325,13 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
 
     qlw_kernel = tile_data(regridder(kernel.lw_q),diff_q)
     qsw_kernel = tile_data(regridder(kernel.sw_q),diff_q)  
-    norm = tile_data(regridder(calc_q_norm(ctrl_ta,ctrl_q,logq=logq)
 
-    # regrid diff_q to kernel pressure levels
+    # regrid diff_q, ctrl_q_clim, and ctrl_ta_clim to kernel pressure levels
     diff_q = diff_q.interp_like(qlw_kernel)
-    norm = norm.interp_like(qlw_kernel)
+    ctrl_q_clim = ctrl_q_clim.interp_like(qlw_kernel)
+    ctrl_ta_clim = ctrl_ta_clim.interp_like(qlw_kernel)
+
+    norm = tile_data(regridder(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,logq=logq)
     
     # construct a 4D DataArray corresponding to layer thickness
     # for vertical integration later
