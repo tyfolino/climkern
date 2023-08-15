@@ -2,9 +2,10 @@ import xarray as xr
 import cf_xarray as cfxr
 import xesmf as xe
 import warnings
+import numpy as np
 
-from climkern.util import make_clim,get_albedo,tile_data,get_kern,\
-check_plev,calc_q_norm
+from climkern.util import make_clim,get_albedo,tile_data,get_kern
+from climkern.util import check_plev,calc_q_norm
 
 # class Kernel:
 #     def __init__(
@@ -328,10 +329,12 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
 
     # regrid diff_q, ctrl_q_clim, and ctrl_ta_clim to kernel pressure levels
     diff_q = diff_q.interp_like(qlw_kernel)
-    ctrl_q_clim = ctrl_q_clim.interp_like(qlw_kernel)
-    ctrl_ta_clim = ctrl_ta_clim.interp_like(qlw_kernel)
+    ctrl_q_clim = ctrl_q_clim.interp(plev=qlw_kernel.plev)
+    ctrl_q_clim.plev.attrs['units'] = ctrl_q.plev.units
+    ctrl_ta_clim = ctrl_ta_clim.interp(plev=qlw_kernel.plev)
+    ctrl_ta_clim.plev.attrs['units'] = ctrl_ta.plev.units
 
-    norm = tile_data(regridder(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,logq=logq)
+    norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,logq=logq),diff_q)
     
     # construct a 4D DataArray corresponding to layer thickness
     # for vertical integration later
