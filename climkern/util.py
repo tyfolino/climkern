@@ -5,6 +5,31 @@ from importlib_resources import files
 import warnings
 import numpy as np
 
+# monkey patch Python warnings format function
+def custom_formatwarning(msg,cat,*args,**kwargs):
+    return(str(cat.__name__) + ': ' + str(msg) + '\n')
+warnings.formatwarning = custom_formatwarning
+
+def check_var_units(da,var):
+    """Check to see if the xarray DataArray has a units attribute."""
+    if('units' not in da.attrs):
+        if(var=='q'):
+            warnings.warn('No units found for input q. Assuming kg/kg.')
+            return(da.assign_attrs({'units':'kg/kg'}))
+        elif(var=='T'):
+            warnings.warn('No units found for input T. Assuming K.')
+            return(da.assign_attrs({'units':'K'}))
+    else:
+        return(da)
+
+def check_plev_units(da):
+    if('units' not in da.plev.attrs):
+        warnings.warn('No units found for input vertical coordinate. Assuming Pa.')
+        plev = da.plev.assign_attrs({'units':'Pa'})
+        return(da.assign_coords({'plev':plev}))
+    else:
+        return(da)
+
 def tile_data(to_tile,new_shape):
     """tile dataset along time axis to match another dataset"""
     if(len(new_shape.time) % 12 != 0):
@@ -86,16 +111,25 @@ def check_plev(kern,output):
     """Make sure the vertical pressure units of the kernel match those of the
     model output. If not, return the kern with updated pressure levels."""
     is_Pa = False
-    if((output.plev.units == 'Pa') and (kern.plev.units != 'Pa')):
-        kern['plev'] = kern.plev * 100
-        kern.plev.attrs['units'] = 'Pa'
-        is_Pa = True
-    elif((kern.plev.units == 'Pa') and (output.plev.units != 'Pa')):
-        output['plev'] = output.plev * 100
-        output.plev.attrs['units'] = 'Pa'
-        is_Pa = True
-    elif((kern.plev.units == 'Pa') and (output.plev.units == 'Pa')):
-        is_Pa = True
+    try:
+        if((output.plev.units == 'Pa') and (kern.plev.units != 'Pa')):
+            kern['plev'] = kern.plev * 100
+            kern.plev.attrs['units'] = 'Pa'
+            is_Pa = True
+        elif((kern.plev.units == 'Pa') and (output.plev.units != 'Pa')):
+            output['plev'] = output.plev * 100
+            output.plev.attrs['units'] = 'Pa'
+            is_Pa = True
+        elif((kern.plev.units == 'Pa') and (output.plev.units == 'Pa')):
+            is_Pa = True
+    # raise warning if plev doesn't have units attribute
+    except(AttributeError):
+        warnings.warn('No "units" attribute on pressure axis.'+
+                      ' Assuming Pa. Consider adding units.')
+        if(kern.plev.units != 'Pa'):
+            kern['plev'] = kern.plev * 100
+            kern.plev.attrs['units'] = 'Pa'
+        is_Pa=True
     return(kern,is_Pa)
 
 def __calc_qs__(temp):
@@ -103,11 +137,12 @@ def __calc_qs__(temp):
     given temperature and pressure."""
     if(temp.plev.units=='Pa'):
         pres = temp.plev/100
-    elif(temp.plev.units=='hPa'):
+    elif(temp.plev.units in ['hPa','millibars']):
         pres = temp.plev
     else:
-        warnings.warn('Warning: Cannot determine units of pressure \
-        coordinate. Assuming units are hPa.')
+        warnings.warn('Cannot determine units of pressure \
+        coordinate. Assuming units are Pa.')
+        pres = temp.plev/100
 
     if(temp.units=='K'):
         temp_c = temp - 273.15
@@ -143,7 +178,6 @@ def __calc_qs__(temp):
 def calc_q_norm(ctrl_ta,ctrl_q,logq=False):
     """Calculate the change in specific humidity for 1K warming
     assuming fixed relative humidity."""
-
     if(ctrl_q.units=='g/kg'):
         ctrl_q = ctrl_q/1000
 
@@ -174,3 +208,9 @@ def calc_q_norm(ctrl_ta,ctrl_q,logq=False):
         dqsdT['units'] = 'g/kg/K'
 
         return(dqsdT)
+def check_sky(sky):
+    """Make sure the sky argument is either all-sky or clear-sky"""
+    if(sky not in ['all-sky','clear-sky']):
+        raise ValueError('The sky argument must either be all-sky or clear-sky.')
+    else:
+        return(sky)

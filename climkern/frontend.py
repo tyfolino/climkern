@@ -5,59 +5,13 @@ import warnings
 import numpy as np
 
 from climkern.util import make_clim,get_albedo,tile_data,get_kern
-from climkern.util import check_plev,calc_q_norm
+from climkern.util import check_plev,calc_q_norm,check_sky
+from climkern.util import check_plev_units,check_var_units,custom_formatwarning
 
-# class Kernel:
-#     def __init__(
-#         self,
-#         ds,
-#         name,
-#         logq = False,
-#         loc='TOA'
-#     ):
-#         """
-#         Make radiative kernel object
-#         Parameters
-#         ----------
-#         data : xarray Dataset
-#             Contains variables corresponding to all-sky and clear-sky
-#             radiative fluxes. Note that the variable name requirements are
-#             strict: sw/lw[clr]_[a|T|q|Ts]. Will return a ValueError
-#             if variables are missing.
-#         name : str
-#             Name of model from which the kernels were produced.
-#         logq : bool, optional
-#             Whether the water vapor feedback calculations require
-#             the difference in the natural log of specific humidity.
-#         loc : str, optional
-#             Kernel levels. Options are
-#             - 'TOA'
-#             - 'sfc'
-            
-#         Returns
-#         -------
-#         kernel : Kernel object
-#         """
-#         self.loc = loc
-#         self.name = name
-#         self.logq = logq
-#         try:
-#             self.sw_a = ds.sw_a
-#             self.sw_q = ds.sw_q
-#             self.swclr_a = ds.swclr_a
-#             self.swclr_q = ds.swclr_q
-#             self.PS = ds.PS
-#             self.lw_q = ds.lw_q
-#             self.lwclr_q = ds.lwclr_q
-#             self.lw_t = ds.lw_t
-#             self.lw_ts = ds.lw_ts
-#             self.lwclr_t = ds.lwclr_t
-#             self.lwclr_ts = ds.lwclr_ts
-#             self.plev = ds.plev
-#         except(AttributeError):
-#             raise ValueError('Kernel input data is missing required variables.')
+warnings.formatwarning = custom_formatwarning
 
-def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern,loc='TOA'):
+def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
+                      sky="all-sky",loc='TOA'):
     """
     Calculate the SW radiative perturbation (W/m^2) resulting from changes in surface albedo
     at the TOA or surface with the specific radiative kernel. Horizontal resolution
@@ -83,6 +37,9 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern,loc='TOA'):
 
     kern : string
         String specifying the institution name of the desired kernels. Defaults to GFDL.
+
+    sky : string
+        String specifying whether the all-sky or clear-sky feedbacks should be used.
         
     loc : string
         String specifying level at which radiative perturbations are desired, either TOA or sfc.
@@ -94,6 +51,8 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern,loc='TOA'):
         3D DataArray containing radiative perturbations at the desired level
         caused by changes in surface albedo. Has coordinates of time, lat, and lon.
     """
+    alb_key = 'sw_a' if check_sky(sky)=='all-sky' else 'swclr_a'
+    
     ctrl_alb_clim = make_clim(get_albedo(ctrl_rsus,ctrl_rsds))
     pert_alb = get_albedo(pert_rsus, pert_rsds)
         
@@ -104,9 +63,9 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern,loc='TOA'):
     # read in and regrid surface albedo kernel
     # kernel = Kernel(get_kern(kern,loc),kern)
     kernel = get_kern(kern,loc)
-    regridder = xe.Regridder(kernel.sw_a,diff_alb,method='bilinear',
+    regridder = xe.Regridder(kernel[alb_key],diff_alb,method='bilinear',
                              reuse_weights=False,periodic=True)
-    kernel = regridder(kernel.sw_a)
+    kernel = regridder(kernel[alb_key])
     
     # calculate feedbacks
     kernel_tiled = tile_data(kernel,diff_alb)
@@ -114,7 +73,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern,loc='TOA'):
     return a_feedback
 
 def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
-                     pert_trop,kern,loc='TOA'):
+                     pert_trop,kern='GFDL',sky='all-sky',loc='TOA'):
     """
     Calculate the LW radiative perturbations (W/m^2) from changes in surface skin
     and air temperature at the TOA or surface with the specified radiative kernel.
@@ -154,6 +113,9 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     kern : string
         String specifying the institution name of the desired kernels. Defaults to GFDL.
         
+    sky : string
+        String specifying whether the all-sky or clear-sky feedbacks should be used.
+        
     loc : string
         String specifying level at which radiative perturbations are desired, either TOA or sfc.
         Defaults to TOA
@@ -170,24 +132,30 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
         caused by changes in a vertically-uniform warming. Has coordinates of time, 
         lat, and lon.
     """
+    t_key = 'lw_t' if check_sky(sky)=='all-sky' else 'lwclr_t'
+    ts_key = 'lw_ts' if sky=='all-sky' else 'lwclr_ts'
+
+    # unit check
+    ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
+    pert_ta = check_var_units(check_plev_units(pert_ta),'T')
+    ctrl_ts = check_var_units(ctrl_ts,'T')
+    pert_ts = check_var_units(pert_ts,'T')
+    
     # mask values below the surface, make climatology
-    # ctrl_ta_clim = make_clim(ctrl_ta.where(ctrl_ps > ctrl_ta.plev))
     ctrl_ta_clim = make_clim(ctrl_ta)
     ctrl_ts_clim = make_clim(ctrl_ts)
     
     # calculate change in Ta & Ts
-    # diff_ta = (pert_ta - tile_data(ctrl_ta_clim,pert_ta)).where(
-    #     pert_ps > pert_ta.plev).where(pert_trop < pert_ta.plev)
     diff_ta = (pert_ta - tile_data(ctrl_ta_clim,pert_ta))
     diff_ts = pert_ts - tile_data(ctrl_ts_clim,pert_ts)
     
     # read in and regrid temperature kernel
     # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
     kernel,is_Pa = check_plev(get_kern(kern,loc),diff_ta)
-    regridder = xe.Regridder(kernel.lw_t,diff_ts,method='bilinear',
+    regridder = xe.Regridder(kernel[t_key],diff_ts,method='bilinear',
                              reuse_weights=False,periodic=True)
-    ta_kernel = tile_data(regridder(kernel.lw_t),diff_ta)
-    ts_kernel = tile_data(regridder(kernel.lw_ts),diff_ta)
+    ta_kernel = tile_data(regridder(kernel[t_key]),diff_ta)
+    ts_kernel = tile_data(regridder(kernel[ts_key]),diff_ta)
 
     # regrid diff_ta to kernel pressure levels
     diff_ta = diff_ta.interp_like(ta_kernel)
@@ -239,7 +207,8 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     return(lr_feedback,planck_feedback)
 
 
-def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='TOA',logq=False):
+def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL',
+                     sky='all-sky',loc='TOA',logq=False):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -276,6 +245,9 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
 
     kern : string
         String specifying the institution name of the desired kernels. Defaults to GFDL.
+
+    sky : string
+        String specifying whether the all-sky or clear-sky kernels should be used.
         
     loc : string
         String specifying level at which radiative perturbations are desired, either TOA or sfc.
@@ -297,6 +269,14 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
         from changes in specific humidity (shortwave). Has coordinates of time, 
         lat, and lon.
     """
+    qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
+    qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
+
+    # unit check
+    ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
+    ctrl_q = check_var_units(check_plev_units(ctrl_q),'q')
+    pert_q = check_var_units(check_plev_units(pert_q),'q')
+    
     # make climatology
     ctrl_q_clim = make_clim(ctrl_q)
     ctrl_ta_clim = make_clim(ctrl_ta)
@@ -308,7 +288,7 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
     elif(ctrl_q.units in ['g/kg']):
         conv_factor = 1
     else:
-        warnings.warn("Warning: cannot determine units of q. Assuming kg/kg.")
+        warnings.warn("Cannot determine units of q. Assuming kg/kg.")
         conv_factor = 1000
 
     # calculate change in q
@@ -320,12 +300,12 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
     # read in and regrid water vapor kernel
     # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
     kernel,is_Pa = check_plev(get_kern(kern,'TOA'),diff_q)
-    regridder = xe.Regridder(kernel.lw_q,diff_q,method='bilinear',
+    regridder = xe.Regridder(kernel[qlw_key],diff_q,method='bilinear',
                              extrap_method="nearest_s2d",
                              reuse_weights=False,periodic=True)
 
-    qlw_kernel = tile_data(regridder(kernel.lw_q),diff_q)
-    qsw_kernel = tile_data(regridder(kernel.sw_q),diff_q)  
+    qlw_kernel = tile_data(regridder(kernel[qlw_key]),diff_q)
+    qsw_kernel = tile_data(regridder(kernel[qsw_key]),diff_q)  
 
     # regrid diff_q, ctrl_q_clim, and ctrl_ta_clim to kernel pressure levels
     diff_q = diff_q.interp_like(qlw_kernel)
@@ -374,3 +354,315 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern,loc='T
     qsw_feedback = (qsw_kernel/norm * diff_q * conv_factor * dp/100).sum(dim='plev')
     
     return(qlw_feedback,qsw_feedback)
+
+def calc_dCRE_SW(ctrl_FSNT,pert_FSNT,ctrl_FSNTC,pert_FSNTC):
+    """
+    Calculate the change in the shortwave cloud radiative effect at the 
+    top-of-atmosphere..
+
+    Parameters
+    ----------
+    ctrl_FSNT : xarray DataArray
+        Three-dimensional DataArray containing the all-sky net shortwave flux
+        at the top-of-atmosphere in the control simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+        
+    pert_FSNT : xarray DataArray
+        Three-dimensional DataArray containing the all-sky net shortwave flux
+        at the top-of-atmosphere in the perturbed simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+
+    ctrl_FSNTC : xarray DataArray
+        Three-dimensional DataArray containing the clear-sky net shortwave flux
+        at the top-of-atmosphere in the control simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+        
+    pert_FSNTC : xarray DataArray
+        Three-dimensional DataArray containing the clear-sky net shortwave flux
+        at the top-of-atmosphere in the perturbed simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+    
+
+    Returns
+    -------
+    dCRE_SW : xarray DataArray
+        Three-dimensional DataArray containing the change in shortwave cloud
+        radiative effect at the top-of-atmosphere with coords of time, lat, 
+        and lon and units of Wm^-2. positive = downwards.
+    """
+    # double check the signs of LW/SW fluxes
+    sw_coeff = -1 if ctrl_FSNT.mean() < 0 else 1
+
+    ctrl_CRE_SW = sw_coeff * (ctrl_FSNT - ctrl_FSNTC)
+    pert_CRE_SW = sw_coeff * (pert_FSNT - pert_FSNTC)
+
+    return(pert_CRE_SW - ctrl_CRE_SW)
+
+def calc_dCRE_LW(ctrl_FLNT,pert_FLNT,ctrl_FLNTC,pert_FLNTC):
+    """
+    Calculate the change in the shortwave cloud radiative effect at the 
+    top-of-atmosphere.
+
+    Parameters
+    ----------
+    ctrl_FLNT : xarray DataArray
+        Three-dimensional DataArray containing the all-sky net longwave flux
+        at the top-of-atmosphere in the control simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+        
+    pert_FLNT : xarray DataArray
+        Three-dimensional DataArray containing the all-sky net longwave flux
+        at the top-of-atmosphere in the perturbed simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+
+    ctrl_FLNTC : xarray DataArray
+        Three-dimensional DataArray containing the clear-sky net longwave flux
+        at the top-of-atmosphere in the control simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+        
+    pert_FLNTC : xarray DataArray
+        Three-dimensional DataArray containing the clear-sky net longwave flux
+        at the top-of-atmosphere in the perturbed simulation
+        with coords of time, lat, and lon and units of Wm^-2. It should be
+        oriented such that positive = downwards.
+    
+
+    Returns
+    -------
+    dCRE_LW : xarray DataArray
+        Three-dimensional DataArray containing the change in longwave cloud
+        radiative effect at the top-of-atmosphere with coords of time, lat, 
+        and lon and units of Wm^-2. positive = downwards.
+    """
+    # double check the signs of LW/SW fluxes
+    lw_coeff = -1 if ctrl_FSNT.mean() > 0 else 1
+
+    ctrl_CRE_LW = lw_coeff * (ctrl_FLNT - ctrl_FLNTC)
+    pert_CRE_LW = lw_coeff * (pert_FLNT - pert_FLNTC)
+
+    return(pert_CRE_LW - ctrl_CRE_LW)
+
+def calc_cloud_LW(t_as,t_cs,q_lwas,q_lwcs,dCRE_lw,IRF_lwas,IRF_lwcs):
+    """
+    Calculate the radiative perturbation from the longwave cloud feedback
+    using the adjustment method outlined in Soden et al. (2008).
+
+    Parameters
+    ----------
+    t_as : xarray DataArray
+        The vertically integrated all-sky radiative perturbation at the TOA
+        from the total temperature feedback. The total temperature feedback
+        is the sum of the Planck and lapse rate feedbacks. Should have dims
+        of lat, lon, and time.
+
+    t_cs : xarray DataArray
+        The vertically integrated clear-sky radiative perturbation at the TOA
+        from the total temperature feedback. The total temperature feedback
+        is the sum of the Planck and lapse rate feedbacks. Should have dims
+        of lat, lon, and time.
+
+    q_lwas : xarray DataArray
+        The vertically integrated all-sky radiative perturbation at the TOA
+        from the longwave water vapor feedback. Should have dims of lat, lon,
+        and time.
+
+    q_lwcs : xarray DataArray
+        The vertically integrated clear-sky readiative perturbation at the TOA
+        from the longwave water vapor feedback. SHould have dims of lat, lon,
+        and time.
+
+    dCRE_lw : xarray DataArray
+        Three-dimensional DataArray containing the change in longwave cloud
+        radiative effect at the top-of-atmosphere with coords of time, lat, 
+        and lon and units of Wm^-2. positive = downwards.
+
+    IRF_lwas : xarray DataArray
+        The longwave all-sky instantaneous radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time.
+
+    IRF_lwcs : xarray DataArray
+        The longwave clear-sky instantaneous radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time.
+
+    Returns
+    -------
+    lw_cld_feedback : xarray DataArray
+        Three-dimensional DataArray containing the TOA radiative perturbation
+        from the longwave cloud feedback.
+    """
+    # For now, we will assume all are on the same grid.
+    # water vapor cloud masking term
+    dq_lw = q_lwcs - q_lwas
+
+    # temperature cloud masking term
+    dt = t_cs - t_as
+
+    # IRF cloud masking term
+    # first double check that the LW IRF is negative
+    irf_coeff = 1 if IRF_lwcs.mean() < 0 else -1
+    dIRF_lw = irf_coeff * (IRF_lwcs - IRL_lwas)
+
+    # calculate longwave cloud feedback
+    lw_cld_feedback = dCRE_lw + dt + dq_lw + dIRF_lw
+
+    return(lw_cld_feedback)
+
+def calc_cloud_SW(alb_as,alb_cs,q_swas,q_swcs,dCRE_sw,IRF_swas,IRF_swcs):
+    """
+    Calculate the radiative perturbation from the shortwave cloud feedback
+    using the adjustment method outlined in Soden et al. (2008).
+
+    Parameters
+    ----------
+    alb_as : xarray DataArray
+        The all-sky radiative perturbation at the TOA
+        from the surface albedo feedback. Should have dims
+        of lat, lon, and time.
+
+    alb_cs : xarray DataArray
+        The clear-sky radiative perturbation at the TOA
+        from the surface albedo feedback. Should have dims
+        of lat, lon, and time.
+
+    q_swas : xarray DataArray
+        The vertically integrated all-sky radiative perturbation at the TOA
+        from the shortwave water vapor feedback. Should have dims of lat, lon,
+        and time.
+
+    q_swcs : xarray DataArray
+        The vertically integrated clear-sky readiative perturbation at the TOA
+        from the shortwave water vapor feedback. SHould have dims of lat, lon,
+        and time.
+
+    dCRE_sw : xarray DataArray
+        Three-dimensional DataArray containing the change in shortwave cloud
+        radiative effect at the top-of-atmosphere with coords of time, lat, 
+        and lon and units of Wm^-2. positive = downwards.
+
+    IRF_swas : xarray DataArray
+        The shortwave all-sky instantaneous radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time.
+
+    IRF_swcs : xarray DataArray
+        The shortwave clear-sky instantaneous radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time.
+
+    Returns
+    -------
+    sw_cld_feedback : xarray DataArray
+        Three-dimensional DataArray containing the TOA radiative perturbation
+        from the shortwave cloud feedback.
+    """
+    # For now, we will assume all are on the same grid.
+    # water vapor cloud masking term
+    dq_sw = q_swcs - q_swas
+
+    # surface albedo cloud masking term
+    dalb = alb_cs - alb_as
+
+    # IRF cloud masking term
+    dIRF_sw = (IRF_swcs - IRL_swas)
+
+    # calculate longwave cloud feedback
+    lw_cld_feedback = dCRE_sw + dalb + dq_sw + dIRF_sw
+
+    return(sw_cld_feedback)
+
+def calc_cloud_LW_res(ctrl_FLNT,pert_FLNT,IRF_lw,t_lw,q_lw):
+    """
+    Calculate the radiative perturbation from the shortwave cloud feedback
+    using the residual method outlined in Soden & Held (2006).
+
+    Parameters
+    ----------
+    ctrl_FLNT : xarray DataArray
+        The all-sky net longwave radiative flux at the TOA in the control
+        simulation. It should have coordinates of lat, lon, and time and
+        be in units of Wm^-2.
+
+    pert_FLNT : xarray DataArray
+        The all-sky net longwave radiative flux at the TOA in the perturbed
+        simulation. It should have coordinates of lat, lon, and time and
+        be in units of Wm^-2.
+
+    IRF_lw : xarray DataArray
+        The longwave all-sky instantaneous radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time.
+
+    t_lw : xarray DataArray
+        The vertically integrated all-sky readiative perturbation at the TOA
+        from the longwave total temperature feedback. Should have dims of lat,
+        lon, and time.
+
+    q_lw : xarray DataArray
+        The vertically integrated all-sky readiative perturbation at the TOA
+        from the longwave water vapor feedback. Should have dims of lat,
+        lon, and time.
+        
+    Returns
+    -------
+    lw_cld_feedback : xarray DataArray
+        Three-dimensional DataArray containing the TOA radiative perturbation
+        from the longwave cloud feedback.
+    """
+    # Calculate ΔR as the difference in net longwave flux
+    # double check that sign is correct first, though
+    lw_coeff = 1 if ctrl_FLNT.mean() < 0 else -1
+    dR_lw = lw_coeff * (pert_FLNT - ctrl_FLNT)
+
+    irf_coeff = 1 if IRF_lw.mean() < 0 else -1
+    lw_cld_feedback = dR_lw - (irf_coeff * IRF_lw) - t_lw - q_lw
+    return(lw_cld_feedback)
+
+def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,IRF_sw,q_sw,alb_sw):
+    """
+    Calculate the radiative perturbation from the shortwave cloud feedback
+    using the residual method outlined in Soden & Held (2006).
+
+    Parameters
+    ----------
+    ctrl_FSNT : xarray DataArray
+        The all-sky net shortwave radiative flux at the TOA in the control
+        simulation. It should have coordinates of lat, lon, and time and
+        be in units of Wm^-2.
+
+    pert_FSNT : xarray DataArray
+        The all-sky net shortwave radiative flux at the TOA in the perturbed
+        simulation. It should have coordinates of lat, lon, and time and
+        be in units of Wm^-2.
+
+    IRF_sw : xarray DataArray
+        The shortwave all-sky instantaneous radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time.
+
+    q_sw : xarray DataArray
+        The vertically integrated all-sky readiative perturbation at the TOA
+        from the longwave water vapor feedback. Should have dims of lat,
+        lon, and time.
+
+    alb_sw : xarray DataArray
+        The all-sky radiative perturbation at the TOA from the surface albedo
+        feedback with coords of lat, lon, and time.
+        
+    Returns
+    -------
+    sw_cld_feedback : xarray DataArray
+        Three-dimensional DataArray containing the TOA radiative perturbation
+        from the shortwave cloud feedback.
+    """
+    # Calculate ΔR as the difference in net shortwave flux
+    dR_sw = pert_FSNT - ctrl_FSNT
+
+    sw_cld_feedback = dR_sw - IRF_sw - q_sw - alb_sw
+    return(sw_cld_feedback)
+    
+    
+
+    
