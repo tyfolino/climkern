@@ -10,8 +10,10 @@ from climkern.util import check_plev_units,check_var_units,custom_formatwarning
 
 warnings.formatwarning = custom_formatwarning
 
+warnings.filterwarnings('ignore','.*does not create an index anymore.*')
+
 def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
-                      sky="all-sky",loc='TOA'):
+                      sky="all-sky"):
     """
     Calculate the SW radiative perturbation (W/m^2) resulting from changes in surface albedo
     at the TOA or surface with the specific radiative kernel. Horizontal resolution
@@ -40,10 +42,6 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
 
     sky : string
         String specifying whether the all-sky or clear-sky feedbacks should be used.
-        
-    loc : string
-        String specifying level at which radiative perturbations are desired, either TOA or sfc.
-        Defaults to TOA
 
     Returns
     -------
@@ -61,8 +59,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
     diff_alb = pert_alb - ctrl_alb_clim_tiled
     
     # read in and regrid surface albedo kernel
-    # kernel = Kernel(get_kern(kern,loc),kern)
-    kernel = get_kern(kern,loc)
+    kernel = get_kern(kern)
     regridder = xe.Regridder(kernel[alb_key],diff_alb,method='bilinear',
                              reuse_weights=False,periodic=True)
     kernel = regridder(kernel[alb_key])
@@ -73,7 +70,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
     return a_feedback
 
 def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
-                     pert_trop,kern='GFDL',sky='all-sky',loc='TOA'):
+                     pert_trop,kern='GFDL',sky='all-sky',p_coord='plev'):
     """
     Calculate the LW radiative perturbations (W/m^2) from changes in surface skin
     and air temperature at the TOA or surface with the specified radiative kernel.
@@ -111,14 +108,16 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
         be 3D with coords of time, lat, and lon and units of Pa.
 
     kern : string
-        String specifying the institution name of the desired kernels. Defaults to GFDL.
+        String specifying the institution name of the desired kernels.
+        Defaults to GFDL.
         
     sky : string
-        String specifying whether the all-sky or clear-sky feedbacks should be used.
-        
-    loc : string
-        String specifying level at which radiative perturbations are desired, either TOA or sfc.
-        Defaults to TOA
+        String specifying whether the all-sky or clear-sky feedbacks 
+        should be used.
+    
+    p_coord : string
+        String specifying the name of the pressure coordinate of the input
+        data. Assumes 'plev' by default.
 
     Returns
     -------
@@ -135,12 +134,17 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     t_key = 'lw_t' if check_sky(sky)=='all-sky' else 'lwclr_t'
     ts_key = 'lw_ts' if sky=='all-sky' else 'lwclr_ts'
 
+    # rename pressure coordinate if the pressure coordinate is not called plev
+    if(p_coord!='plev'):
+        ctrl_ta = ctrl_ta.rename({p_coord:'plev'})
+        pert_ta = pert_ta.rename({p_coord:'plev'})
+
     # unit check
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
     pert_ta = check_var_units(check_plev_units(pert_ta),'T')
     ctrl_ts = check_var_units(ctrl_ts,'T')
     pert_ts = check_var_units(pert_ts,'T')
-    
+
     # mask values below the surface, make climatology
     ctrl_ta_clim = make_clim(ctrl_ta)
     ctrl_ts_clim = make_clim(ctrl_ts)
@@ -150,8 +154,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     diff_ts = pert_ts - tile_data(ctrl_ts_clim,pert_ts)
     
     # read in and regrid temperature kernel
-    # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
-    kernel,is_Pa = check_plev(get_kern(kern,loc),diff_ta)
+    kernel,is_Pa = check_plev(get_kern(kern),diff_ta)
     regridder = xe.Regridder(kernel[t_key],diff_ts,method='bilinear',
                              reuse_weights=False,periodic=True)
     ta_kernel = tile_data(regridder(kernel[t_key]),diff_ta)
@@ -208,7 +211,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
 
 
 def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL',
-                     sky='all-sky',loc='TOA',logq=False):
+                     sky='all-sky',logq=False,p_coord='plev'):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -248,14 +251,14 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
 
     sky : string
         String specifying whether the all-sky or clear-sky kernels should be used.
-        
-    loc : string
-        String specifying level at which radiative perturbations are desired, either TOA or sfc.
-        Defaults to TOA
 
     logq : boolean
         Specifies whether to use the natural log of the specific humidity to calculate the
         water vapor feedbacks. Defaults to False.
+
+    p_coord : string
+        String specifying the name of the pressure coordinate of the input
+        data. Assumes 'plev' by default.
 
     Returns
     -------
@@ -271,6 +274,11 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
     """
     qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
     qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
+
+    if(p_coord!='plev'):
+        ctrl_ta = ctrl_ta.rename({p_coord:'plev'})
+        ctrl_q = ctrl_q.rename({p_coord:'plev'})
+        pert_q = pert_q.rename({p_coord:'plev'})
 
     # unit check
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
@@ -298,7 +306,6 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
         diff_q = np.log(pert_q) - np.log(tile_data(ctrl_q_clim,pert_q))
     
     # read in and regrid water vapor kernel
-    # kernel = Kernel(check_plev(get_kern(kern,loc),diff_ta),kern)
     kernel,is_Pa = check_plev(get_kern(kern,'TOA'),diff_q)
     regridder = xe.Regridder(kernel[qlw_key],diff_q,method='bilinear',
                              extrap_method="nearest_s2d",

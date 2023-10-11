@@ -10,6 +10,8 @@ def custom_formatwarning(msg,cat,*args,**kwargs):
     return(str(cat.__name__) + ': ' + str(msg) + '\n')
 warnings.formatwarning = custom_formatwarning
 
+warnings.filterwarnings('ignore','.*does not create an index anymore.*')
+
 def check_var_units(da,var):
     """Check to see if the xarray DataArray has a units attribute."""
     if('units' not in da.attrs):
@@ -58,11 +60,11 @@ def _check_coords(da):
     """Try to grab time, lat, lon, and plev coordinates
     from DataArray.
     """
-    # check to see if lat/lon are CF-compliant for regridding
+    # check to see if lat/lon are CF-compliant for regriddingtile
     # if they are, rename to lat/lon for xesmf
     try:
-        da = da.rename_dims({da.cf['latitude'].name:'lat',
-                             da.cf['longitude'].name:'lon'})
+        da = da.rename({da.cf['latitude'].name:'lat',
+                        da.cf['longitude'].name:'lon'})
     except(ValueError):
         # ValueError if the dims are already named lat/lon
         pass
@@ -80,7 +82,7 @@ def _check_coords(da):
         elif(v == vert_names[-1]):
             raise AttributeError('Could not find vertical coordinate.')
     try:
-        da = da.rename_dims({vert_coord:'plev'})
+        da = da.rename({vert_coord:'plev'})
     except(ValueError):
         pass
 
