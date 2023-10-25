@@ -34,12 +34,19 @@ def check_plev_units(da):
 
 def tile_data(to_tile,new_shape):
     """tile dataset along time axis to match another dataset"""
+    new_shape = _check_time(new_shape)
     if(len(new_shape.time) % 12 != 0):
         raise ValueError('dataset time dimension must be divisible by 12')
     tiled = xr.concat([to_tile for i in range(
         int(len(new_shape.time)/12))],dim='time')
     tiled['time'] = new_shape.time
     return(tiled)
+
+def _check_time(da):
+    """Rename 'month' to 'time'"""
+    if('month' in da.coords):
+        da = da.rename({'month':'time'})
+    return(da)
 
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
@@ -52,8 +59,13 @@ def get_kern(name,loc='TOA'):
 
 def make_clim(da):
     "Produce monthly climatology of model field."
-    time = _get_time(da) # also checks to see if time exists
-    clim = da.groupby(time.dt.month).mean(dim='time',skipna=True).rename({'month':'time'})
+    da = _check_time(da)
+    try:
+        clim = da.groupby(da.time.dt.month).mean(dim='time',skipna=True).rename(
+            {'month':'time'})
+    except(TypeError):
+        # TypeError if time is not datetime object
+        clim = da
     return clim
 
 def _check_coords(da):
@@ -95,18 +107,20 @@ def _check_coords(da):
 
     return(da)
             
-def _get_time(da):
-    """Return the time dimension from ds."""
-    try:
-        return da.time
-    except(AttributeError):
-        # AttributeError if variable does not exist in ds
-        raise ValueError('dataset does not have a dimension called "time"')
-    return time
+# def _get_time(da):
+#     """Return the time dimension from ds."""
+#     if('time' not in da.dims):
+#         try:
+#             da = da.rename({'month':'time'})
+#         except(ValueError):
+#             raise AttributeError('There is no dimension named \'time\' or \'month\'.')
+#     return da.time
 
 def get_albedo(SWup,SWdown):
     """Calculate the surface albedo as the ratio of upward to downward sfc shortwave."""
     # avoid dividing by 0 and assign 0 to those grid boxes
+    SWup = _check_time(SWup)
+    SWdown = _check_time(SWdown)
     return (SWup/SWdown.where(SWdown>0)).fillna(0)
 
 def check_plev(kern,output):

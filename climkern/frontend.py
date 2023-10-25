@@ -449,7 +449,7 @@ def calc_dCRE_LW(ctrl_FLNT,pert_FLNT,ctrl_FLNTC,pert_FLNTC):
         and lon and units of Wm^-2. positive = downwards.
     """
     # double check the signs of LW/SW fluxes
-    lw_coeff = -1 if ctrl_FSNT.mean() > 0 else 1
+    lw_coeff = -1 if ctrl_FLNT.mean() > 0 else 1
 
     ctrl_CRE_LW = lw_coeff * (ctrl_FLNT - ctrl_FLNTC)
     pert_CRE_LW = lw_coeff * (pert_FLNT - pert_FLNTC)
@@ -514,7 +514,7 @@ def calc_cloud_LW(t_as,t_cs,q_lwas,q_lwcs,dCRE_lw,IRF_lwas,IRF_lwcs):
     # IRF cloud masking term
     # first double check that the LW IRF is negative
     irf_coeff = 1 if IRF_lwcs.mean() < 0 else -1
-    dIRF_lw = irf_coeff * (IRF_lwcs - IRL_lwas)
+    dIRF_lw = irf_coeff * (IRF_lwcs - IRF_lwas)
 
     # calculate longwave cloud feedback
     lw_cld_feedback = dCRE_lw + dt + dq_lw + dIRF_lw
@@ -575,10 +575,10 @@ def calc_cloud_SW(alb_as,alb_cs,q_swas,q_swcs,dCRE_sw,IRF_swas,IRF_swcs):
     dalb = alb_cs - alb_as
 
     # IRF cloud masking term
-    dIRF_sw = (IRF_swcs - IRL_swas)
+    dIRF_sw = (IRF_swcs - IRF_swas)
 
     # calculate longwave cloud feedback
-    lw_cld_feedback = dCRE_sw + dalb + dq_sw + dIRF_sw
+    sw_cld_feedback = dCRE_sw + dalb + dq_sw + dIRF_sw
 
     return(sw_cld_feedback)
 
