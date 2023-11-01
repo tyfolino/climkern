@@ -34,7 +34,7 @@ def check_plev_units(da):
 
 def tile_data(to_tile,new_shape):
     """tile dataset along time axis to match another dataset"""
-    new_shape = _check_time(new_shape)
+    # new_shape = _check_time(new_shape)
     if(len(new_shape.time) % 12 != 0):
         raise ValueError('dataset time dimension must be divisible by 12')
     tiled = xr.concat([to_tile for i in range(
@@ -42,11 +42,11 @@ def tile_data(to_tile,new_shape):
     tiled['time'] = new_shape.time
     return(tiled)
 
-def _check_time(da):
-    """Rename 'month' to 'time'"""
-    if('month' in da.coords):
-        da = da.rename({'month':'time'})
-    return(da)
+# def _check_time(da):
+#     """Rename 'month' to 'time'"""
+#     if('month' in da.coords):
+#         da = da.rename({'month':'time'})
+#     return(da)
 
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
@@ -55,11 +55,11 @@ def get_kern(name,loc='TOA'):
         data = xr.open_dataset(files('climkern').joinpath(path))
     except(ValueError):
         data = xr.open_dataset(files('climkern').joinpath(path),decode_times=False)
-    return _check_coords(data)
+    return check_coords(data)
 
 def make_clim(da):
     "Produce monthly climatology of model field."
-    da = _check_time(da)
+    # da = _check_time(da)
     try:
         clim = da.groupby(da.time.dt.month).mean(dim='time',skipna=True).rename(
             {'month':'time'})
@@ -68,44 +68,44 @@ def make_clim(da):
         clim = da
     return clim
 
-def _check_coords(da):
-    """Try to grab time, lat, lon, and plev coordinates
-    from DataArray.
-    """
-    # check to see if lat/lon are CF-compliant for regriddingtile
-    # if they are, rename to lat/lon for xesmf
-    try:
-        da = da.rename({da.cf['latitude'].name:'lat',
-                        da.cf['longitude'].name:'lon'})
-    except(ValueError):
-        # ValueError if the dims are already named lat/lon
-        pass
-    except (KeyError, AttributeError):
-        # KeyError if cfxr doesn't detect the coords
-        # AttributeError if ds is a dict
-        raise ValueError('horizontal coordinates must be CF-compliant')
+# def _check_coords(da):
+#     """Try to grab time, lat, lon, and plev coordinates
+#     from DataArray.
+#     """
+#     # check to see if lat/lon are CF-compliant for regriddingtile
+#     # if they are, rename to lat/lon for xesmf
+#     try:
+#         da = da.rename({da.cf['latitude'].name:'lat',
+#                         da.cf['longitude'].name:'lon'})
+#     except(ValueError):
+#         # ValueError if the dims are already named lat/lon
+#         pass
+#     except (KeyError, AttributeError):
+#         # KeyError if cfxr doesn't detect the coords
+#         # AttributeError if ds is a dict
+#         raise ValueError('horizontal coordinates must be CF-compliant')
 
-    # grab vertical level
-    vert_names = ['plev','player','lev']
-    for v in vert_names:
-        if(v in da.dims):
-            vert_coord = v
-            break
-        elif(v == vert_names[-1]):
-            raise AttributeError('Could not find vertical coordinate.')
-    try:
-        da = da.rename({vert_coord:'plev'})
-    except(ValueError):
-        pass
+#     # grab vertical level
+#     vert_names = ['plev','player','lev']
+#     for v in vert_names:
+#         if(v in da.dims):
+#             vert_coord = v
+#             break
+#         elif(v == vert_names[-1]):
+#             raise AttributeError('Could not find vertical coordinate.')
+#     try:
+#         da = da.rename({vert_coord:'plev'})
+#     except(ValueError):
+#         pass
 
-    # time dimension
-    if('time' not in da.dims):
-        try:
-            da = da.rename({'month':'time'})
-        except(ValueError):
-            raise AttributeError('There is no dimension named \'time\' or \'month\'.')
+#     # time dimension
+#     if('time' not in da.dims):
+#         try:
+#             da = da.rename({'month':'time'})
+#         except(ValueError):
+#             raise AttributeError('There is no dimension named \'time\' or \'month\'.')
 
-    return(da)
+#     return(da)
             
 # def _get_time(da):
 #     """Return the time dimension from ds."""
@@ -119,8 +119,8 @@ def _check_coords(da):
 def get_albedo(SWup,SWdown):
     """Calculate the surface albedo as the ratio of upward to downward sfc shortwave."""
     # avoid dividing by 0 and assign 0 to those grid boxes
-    SWup = _check_time(SWup)
-    SWdown = _check_time(SWdown)
+    # SWup = _check_time(SWup)
+    # SWdown = _check_time(SWdown)
     return (SWup/SWdown.where(SWdown>0)).fillna(0)
 
 def check_plev(kern,output):
@@ -230,3 +230,38 @@ def check_sky(sky):
         raise ValueError('The sky argument must either be all-sky or clear-sky.')
     else:
         return(sky)
+
+def check_coords(ds,ndim=3):
+    """Universal function to check that dataset coordinates are in line with
+    what the package requires."""
+    # time
+    if('time' in ds.dims):
+        pass
+    elif('month' in ds.dims):
+        ds = ds.rename({'month':'time'})
+    else:
+        raise AttributeError('There is no \'time\' or \'month\' dimension in\
+        one of the input DataArrays. Please rename your time dimension(s).')
+
+    # lat and lon
+    if('lat' not in ds.dims and 'latitude' not in ds.dims):
+        raise AttributeError('There is no \'lat\' or \'latitude\' dimension in\
+        one of the input DataArrays. Please rename your lat dimension(s).')
+
+    if('lon' not in ds.dims and 'longitude' not in ds.dims):
+        raise AttributeError('There is no \'lon\' or \'longitude\' dimension in\
+        one of the input DataArrays. Please rename your lat dimension(s).')
+
+    if(ndim==4):
+        if('plev' in ds.dims):
+            pass
+        else:
+            bool = False
+            for n in ['lev','player','level']:
+                if(n in ds.dims):
+                    ds = ds.rename({n:'plev'})
+                    bool = True
+            if(bool == False):
+                raise AttributeError('Cannot find the name of the pressure\
+                coordinate. Please rename it to \'plev\'.')
+    return(ds)

@@ -5,8 +5,8 @@ import warnings
 import numpy as np
 
 from climkern.util import make_clim,get_albedo,tile_data,get_kern
-from climkern.util import check_plev,calc_q_norm,check_sky
-from climkern.util import check_plev_units,check_var_units,custom_formatwarning
+from climkern.util import check_plev,calc_q_norm,check_sky,check_coords
+from climkern.util import check_var_units,custom_formatwarning,check_plev_units
 
 warnings.formatwarning = custom_formatwarning
 
@@ -49,7 +49,12 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
         3D DataArray containing radiative perturbations at the desired level
         caused by changes in surface albedo. Has coordinates of time, lat, and lon.
     """
+    # determine whether we want all-sky or clear-sky
     alb_key = 'sw_a' if check_sky(sky)=='all-sky' else 'swclr_a'
+
+    # check dataset dimensions
+    for d in [ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds]:
+        d = check_coords(d)
     
     ctrl_alb_clim = make_clim(get_albedo(ctrl_rsus,ctrl_rsds))
     pert_alb = get_albedo(pert_rsus, pert_rsds)
@@ -70,7 +75,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
     return a_feedback
 
 def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
-                     pert_trop,kern='GFDL',sky='all-sky',p_coord='plev'):
+                     pert_trop,kern='GFDL',sky='all-sky'):
     """
     Calculate the LW radiative perturbations (W/m^2) from changes in surface skin
     and air temperature at the TOA or surface with the specified radiative kernel.
@@ -114,10 +119,6 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     sky : string
         String specifying whether the all-sky or clear-sky feedbacks 
         should be used.
-    
-    p_coord : string
-        String specifying the name of the pressure coordinate of the input
-        data. Assumes 'plev' by default.
 
     Returns
     -------
@@ -134,10 +135,11 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     t_key = 'lw_t' if check_sky(sky)=='all-sky' else 'lwclr_t'
     ts_key = 'lw_ts' if sky=='all-sky' else 'lwclr_ts'
 
-    # rename pressure coordinate if the pressure coordinate is not called plev
-    if(p_coord!='plev'):
-        ctrl_ta = ctrl_ta.rename({p_coord:'plev'})
-        pert_ta = pert_ta.rename({p_coord:'plev'})
+    # check model output coordinates
+    for d in [ctrl_ta,pert_ta]:
+        d = check_coords(d,ndim=4)
+    for d in [ctrl_ts,ctrl_ps,pert_ts,pert_ps,pert_trop]:
+        d = check_coords(d)
 
     # unit check
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
@@ -146,7 +148,9 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     pert_ts = check_var_units(pert_ts,'T')
 
     # mask values below the surface, make climatology
+    ctrl_ps_clim = make_clim(ctrl_ps)
     ctrl_ta_clim = make_clim(ctrl_ta)
+    ctrl_ta_clim = ctrl_ta_clim.where(ctrl_ta_clim.plev < ctrl_ps_clim)
     ctrl_ts_clim = make_clim(ctrl_ts)
     
     # calculate change in Ta & Ts
@@ -161,7 +165,10 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     ts_kernel = tile_data(regridder(kernel[ts_key]),diff_ta)
 
     # regrid diff_ta to kernel pressure levels
-    diff_ta = diff_ta.interp_like(ta_kernel)
+    # we have to extrapolate in case the lowest model plev is above the
+    # kernel's. We will also mask values below the surface.
+    diff_ta = diff_ta.interp_like(ta_kernel,kwargs={
+        "fill_value": "extrapolate"})
     
     # construct a 4D DataArray corresponding to layer thickness
     # for vertical integration later
@@ -211,7 +218,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
 
 
 def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL',
-                     sky='all-sky',logq=False,p_coord='plev'):
+                     sky='all-sky',logq=False):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -256,10 +263,6 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
         Specifies whether to use the natural log of the specific humidity to calculate the
         water vapor feedbacks. Defaults to False.
 
-    p_coord : string
-        String specifying the name of the pressure coordinate of the input
-        data. Assumes 'plev' by default.
-
     Returns
     -------
     lw_q_feedback : xarray DataArray
@@ -275,10 +278,11 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
     qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
     qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
 
-    if(p_coord!='plev'):
-        ctrl_ta = ctrl_ta.rename({p_coord:'plev'})
-        ctrl_q = ctrl_q.rename({p_coord:'plev'})
-        pert_q = pert_q.rename({p_coord:'plev'})
+    # check model output coordinates
+    for d in [ctrl_q,ctrl_ta,pert_q]:
+        d = check_coords(d,ndim=4)
+    for d in [ctrl_ps,pert_ps,pert_trop]:
+        d = check_coords(d)
 
     # unit check
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
@@ -286,8 +290,11 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
     pert_q = check_var_units(check_plev_units(pert_q),'q')
     
     # make climatology
+    ctrl_ps_clim = make_clim(ctrl_ps)
     ctrl_q_clim = make_clim(ctrl_q)
+    ctrl_q_clim = ctrl_q_clim.where(ctrl_q_clim.plev<ctrl_ps_clim)
     ctrl_ta_clim = make_clim(ctrl_ta)
+    ctrl_ta_clim = ctrl_ta_clim.where(ctrl_ta_clim.plev<ctrl_ps_clim)
 
     # if q has units of unity or kg/kg, we will have to 
     # multiply by 1000 later on to make it g/kg
@@ -315,10 +322,11 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
     qsw_kernel = tile_data(regridder(kernel[qsw_key]),diff_q)  
 
     # regrid diff_q, ctrl_q_clim, and ctrl_ta_clim to kernel pressure levels
-    diff_q = diff_q.interp_like(qlw_kernel)
-    ctrl_q_clim = ctrl_q_clim.interp(plev=qlw_kernel.plev)
+    kwargs = {'fill_value':'extrapolate'}
+    diff_q = diff_q.interp_like(qlw_kernel,kwargs=kwargs)
+    ctrl_q_clim = ctrl_q_clim.interp(plev=qlw_kernel.plev,kwargs=kwargs)
     ctrl_q_clim.plev.attrs['units'] = ctrl_q.plev.units
-    ctrl_ta_clim = ctrl_ta_clim.interp(plev=qlw_kernel.plev)
+    ctrl_ta_clim = ctrl_ta_clim.interp(plev=qlw_kernel.plev,kwargs=kwargs)
     ctrl_ta_clim.plev.attrs['units'] = ctrl_ta.plev.units
 
     norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,logq=logq),diff_q)
@@ -512,8 +520,8 @@ def calc_cloud_LW(t_as,t_cs,q_lwas,q_lwcs,dCRE_lw,IRF_lwas,IRF_lwcs):
     dt = t_cs - t_as
 
     # IRF cloud masking term
-    # first double check that the LW IRF is negative
-    irf_coeff = 1 if IRF_lwcs.mean() < 0 else -1
+    # first double check that the LW IRF is positive
+    irf_coeff = -1 if IRF_lwcs.mean() < 0 else 1
     dIRF_lw = irf_coeff * (IRF_lwcs - IRF_lwas)
 
     # calculate longwave cloud feedback
@@ -624,7 +632,7 @@ def calc_cloud_LW_res(ctrl_FLNT,pert_FLNT,IRF_lw,t_lw,q_lw):
     lw_coeff = 1 if ctrl_FLNT.mean() < 0 else -1
     dR_lw = lw_coeff * (pert_FLNT - ctrl_FLNT)
 
-    irf_coeff = 1 if IRF_lw.mean() < 0 else -1
+    irf_coeff = -1 if IRF_lw.mean() < 0 else 1
     lw_cld_feedback = dR_lw - (irf_coeff * IRF_lw) - t_lw - q_lw
     return(lw_cld_feedback)
 
