@@ -6,7 +6,8 @@ import numpy as np
 
 from climkern.util import make_clim,get_albedo,tile_data,get_kern
 from climkern.util import check_plev,calc_q_norm,check_sky,check_coords
-from climkern.util import check_var_units,custom_formatwarning,check_plev_units
+from climkern.util import check_var_units,custom_formatwarning
+from climkern.util import check_pres_units,check_plev_units,make_tropo
 
 warnings.formatwarning = custom_formatwarning
 
@@ -75,7 +76,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
     return a_feedback
 
 def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
-                     pert_trop,kern='GFDL',sky='all-sky'):
+                     pert_trop=None,kern='GFDL',sky='all-sky'):
     """
     Calculate the LW radiative perturbations (W/m^2) from changes in surface skin
     and air temperature at the TOA or surface with the specified radiative kernel.
@@ -94,7 +95,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
         
     ctrl_ps : xarray DataArray
         Contains the surface pressure in the control simulation. Must
-        be 3D with coords of time, lat, and lon and units of Pa.
+        be 3D with coords of time, lat, and lon.
         
     pert_ta : xarray DataArray
         Contains air temperature on standard pressure levels in the perturbed simulation.
@@ -106,11 +107,11 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
         
     pert_ps : xarray DataArray
         Contains the surface pressure in the perturbed simulation. Must
-        be 3D with coords of time, lat, and lon and units of Pa.
+        be 3D with coords of time, lat, and lon.
         
     pert_trop : xarray DataArray
         Contains the tropopause height in the perturbed simulation. Must
-        be 3D with coords of time, lat, and lon and units of Pa.
+        be 3D with coords of time, lat, and lon.
 
     kern : string
         String specifying the institution name of the desired kernels.
@@ -138,7 +139,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     # check model output coordinates
     for d in [ctrl_ta,pert_ta]:
         d = check_coords(d,ndim=4)
-    for d in [ctrl_ts,ctrl_ps,pert_ts,pert_ps,pert_trop]:
+    for d in [ctrl_ts,ctrl_ps,pert_ts,pert_ps]:
         d = check_coords(d)
 
     # unit check
@@ -146,6 +147,17 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     pert_ta = check_var_units(check_plev_units(pert_ta),'T')
     ctrl_ts = check_var_units(ctrl_ts,'T')
     pert_ts = check_var_units(pert_ts,'T')
+
+    # check units of ps and trop
+    ctrl_ps = check_pres_units(ctrl_ps,"ctrl PS")
+    pert_ps = check_pres_units(pert_ps,"pert PS")
+
+    # make a fake tropopause if it's not provided
+    if(type(pert_trop) == type(None)):
+        pert_trop = make_tropo(ctrl_ps)
+    else:
+        pert_trop = check_coords(pert_trop)
+        pert_trop = check_pres_units(pert_trop,"pert tropopause")
 
     # mask values below the surface, make climatology
     ctrl_ps_clim = make_clim(ctrl_ps)
@@ -158,7 +170,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     diff_ts = pert_ts - tile_data(ctrl_ts_clim,pert_ts)
     
     # read in and regrid temperature kernel
-    kernel,is_Pa = check_plev(get_kern(kern),diff_ta)
+    kernel = check_plev(get_kern(kern))
     regridder = xe.Regridder(kernel[t_key],diff_ts,method='bilinear',
                              reuse_weights=False,periodic=True)
     ta_kernel = tile_data(regridder(kernel[t_key]),diff_ta)
@@ -196,9 +208,6 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
 
     # get the layer thickness by taking finite difference along pressure axis
     dp = sign_change * ilevs.diff(dim='plev',label='lower')
-    # if dp is in Pascals, just divide by 100 to make it hPa
-    if(is_Pa == True):
-        dp = dp/100
 
     # override pressure axis so xarray doesn't throw a fit
     dp['plev'] = diff_ta.plev
@@ -206,19 +215,19 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     # calculate feedbacks
     # for lapse rate, use the deviation of the air temperature response
     # from vertically uniform warming
-    lr_feedback = ((ta_kernel * (diff_ta - diff_ts).fillna(0)) * dp/100
+    lr_feedback = ((ta_kernel * (diff_ta - diff_ts).fillna(0)) * dp/10000
                   ).sum(dim='plev',min_count=1)
     
     # for planck, assume vertically uniform warming and 
     # account for surface temperature change
     planck_feedback = ((ts_kernel * diff_ts) + (ta_kernel * xr.broadcast(
-        diff_ts,diff_ta)[0].fillna(0) * dp/100).sum(dim='plev',min_count=1))
+        diff_ts,diff_ta)[0].fillna(0) * dp/10000).sum(dim='plev',min_count=1))
        
     return(lr_feedback,planck_feedback)
 
 
-def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL',
-                     sky='all-sky',logq=False):
+def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
+                     kern='GFDL',sky='all-sky',logq=False):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -238,7 +247,7 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
         
     ctrl_ps : xarray DataArray
         Contains the surface pressure in the control simulation. Must
-        be 3D with coords of time, lat, and lon and units of Pa.
+        be 3D with coords of time, lat, and lon.
         
     pert_q : xarray DataArray
         Contains specific on pressure levels in the perturbed simulation.
@@ -247,11 +256,11 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
         
     pert_ps : xarray DataArray
         Contains the surface pressure in the perturbed simulation. Must
-        be 3D with coords of time, lat, and lon and units of Pa.
+        be 3D with coords of time, lat, and lon.
         
     pert_trop : xarray DataArray
         Contains the tropopause height in the perturbed simulation. Must
-        be 3D with coords of time, lat, and lon and units of Pa.
+        be 3D with coords of time, lat, and lon.
 
     kern : string
         String specifying the institution name of the desired kernels. Defaults to GFDL.
@@ -281,13 +290,24 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
     # check model output coordinates
     for d in [ctrl_q,ctrl_ta,pert_q]:
         d = check_coords(d,ndim=4)
-    for d in [ctrl_ps,pert_ps,pert_trop]:
+    for d in [ctrl_ps,pert_ps]:
         d = check_coords(d)
 
     # unit check
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
     ctrl_q = check_var_units(check_plev_units(ctrl_q),'q')
     pert_q = check_var_units(check_plev_units(pert_q),'q')
+
+    # check units of ps and trop
+    ctrl_ps = check_pres_units(ctrl_ps,"ctrl PS")
+    pert_ps = check_pres_units(pert_ps,"pert PS")
+
+    # make a fake tropopause if it's not provided
+    if(type(pert_trop) == type(None)):
+        pert_trop = make_tropo(ctrl_ps)
+    else:
+        pert_trop = check_coords(pert_trop)
+        pert_trop = check_pres_units(pert_trop,"pert tropopause")
     
     # make climatology
     ctrl_ps_clim = make_clim(ctrl_ps)
@@ -313,7 +333,7 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
         diff_q = np.log(pert_q) - np.log(tile_data(ctrl_q_clim,pert_q))
     
     # read in and regrid water vapor kernel
-    kernel,is_Pa = check_plev(get_kern(kern,'TOA'),diff_q)
+    kernel = check_plev(get_kern(kern))
     regridder = xe.Regridder(kernel[qlw_key],diff_q,method='bilinear',
                              extrap_method="nearest_s2d",
                              reuse_weights=False,periodic=True)
@@ -357,17 +377,14 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
 
     # get the layer thickness by taking finite difference along pressure axis
     dp = ilevs.diff(dim='plev',label='lower') * sign_change
-    # if dp is in Pascals, just divide by 100 to make it hPa
-    if(is_Pa == True):
-        dp = dp/100
 
     # override pressure axis so xarray doesn't throw a fit
     dp['plev'] = diff_q.plev
                     
     # calculate feedbacks
-    qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/100).sum(
+    qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/10000).sum(
         dim='plev',min_count=1)
-    qsw_feedback = (qsw_kernel/norm * diff_q * conv_factor * dp/100).sum(
+    qsw_feedback = (qsw_kernel/norm * diff_q * conv_factor * dp/10000).sum(
         dim='plev',min_count=1).fillna(0)
 
     # one complication: CloudSat needs to be masked so we don't fill the NaNs

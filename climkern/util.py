@@ -24,11 +24,32 @@ def check_var_units(da,var):
     else:
         return(da)
 
+def make_tropo(PS):
+    """Use the surface pressure DataArray to make a makeshift tropopause."""
+    tropo = (3e4 - 2e4*np.cos(np.deg2rad(PS.lat))).broadcast_like(PS)
+    return(tropo)
+
 def check_plev_units(da):
     if('units' not in da.plev.attrs):
         warnings.warn('No units found for input vertical coordinate. Assuming Pa.')
         plev = da.plev.assign_attrs({'units':'Pa'})
         return(da.assign_coords({'plev':plev}))
+    elif(da.plev.units in ['hPa','mb','millibars']):
+        da['plev'] = da.plev * 100
+        da.plev.attrs['units'] = 'Pa'
+        return(da)
+    else:
+        return(da)
+
+def check_pres_units(da,var_name):
+    if('units' not in da.attrs):
+        warnings.warn("Could not determine units of " + var_name +
+                      ". Assuming Pa.")
+        da.assign_attrs({'units':'Pa'})
+    elif(da.units in ['hPa','mb','millibars']):
+        da = da * 100
+        da.attrs['units'] = 'Pa'
+        return(da)
     else:
         return(da)
 
@@ -41,12 +62,6 @@ def tile_data(to_tile,new_shape):
         int(len(new_shape.time)/12))],dim='time')
     tiled['time'] = new_shape.time
     return(tiled)
-
-# def _check_time(da):
-#     """Rename 'month' to 'time'"""
-#     if('month' in da.coords):
-#         da = da.rename({'month':'time'})
-#     return(da)
 
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
@@ -68,54 +83,6 @@ def make_clim(da):
         clim = da
     return clim
 
-# def _check_coords(da):
-#     """Try to grab time, lat, lon, and plev coordinates
-#     from DataArray.
-#     """
-#     # check to see if lat/lon are CF-compliant for regriddingtile
-#     # if they are, rename to lat/lon for xesmf
-#     try:
-#         da = da.rename({da.cf['latitude'].name:'lat',
-#                         da.cf['longitude'].name:'lon'})
-#     except(ValueError):
-#         # ValueError if the dims are already named lat/lon
-#         pass
-#     except (KeyError, AttributeError):
-#         # KeyError if cfxr doesn't detect the coords
-#         # AttributeError if ds is a dict
-#         raise ValueError('horizontal coordinates must be CF-compliant')
-
-#     # grab vertical level
-#     vert_names = ['plev','player','lev']
-#     for v in vert_names:
-#         if(v in da.dims):
-#             vert_coord = v
-#             break
-#         elif(v == vert_names[-1]):
-#             raise AttributeError('Could not find vertical coordinate.')
-#     try:
-#         da = da.rename({vert_coord:'plev'})
-#     except(ValueError):
-#         pass
-
-#     # time dimension
-#     if('time' not in da.dims):
-#         try:
-#             da = da.rename({'month':'time'})
-#         except(ValueError):
-#             raise AttributeError('There is no dimension named \'time\' or \'month\'.')
-
-#     return(da)
-            
-# def _get_time(da):
-#     """Return the time dimension from ds."""
-#     if('time' not in da.dims):
-#         try:
-#             da = da.rename({'month':'time'})
-#         except(ValueError):
-#             raise AttributeError('There is no dimension named \'time\' or \'month\'.')
-#     return da.time
-
 def get_albedo(SWup,SWdown):
     """Calculate the surface albedo as the ratio of upward to downward sfc shortwave."""
     # avoid dividing by 0 and assign 0 to those grid boxes
@@ -123,30 +90,14 @@ def get_albedo(SWup,SWdown):
     # SWdown = _check_time(SWdown)
     return (SWup/SWdown.where(SWdown>0)).fillna(0)
 
-def check_plev(kern,output):
-    """Make sure the vertical pressure units of the kernel match those of the
-    model output. If not, return the kern with updated pressure levels."""
-    is_Pa = False
-    try:
-        if((output.plev.units == 'Pa') and (kern.plev.units != 'Pa')):
-            kern['plev'] = kern.plev * 100
-            kern.plev.attrs['units'] = 'Pa'
-            is_Pa = True
-        elif((kern.plev.units == 'Pa') and (output.plev.units != 'Pa')):
-            output['plev'] = output.plev * 100
-            output.plev.attrs['units'] = 'Pa'
-            is_Pa = True
-        elif((kern.plev.units == 'Pa') and (output.plev.units == 'Pa')):
-            is_Pa = True
-    # raise warning if plev doesn't have units attribute
-    except(AttributeError):
-        warnings.warn('No "units" attribute on pressure axis.'+
-                      ' Assuming Pa. Consider adding units.')
-        if(kern.plev.units != 'Pa'):
-            kern['plev'] = kern.plev * 100
-            kern.plev.attrs['units'] = 'Pa'
-        is_Pa=True
-    return(kern,is_Pa)
+def check_plev(kern):
+    """Make sure the vertical pressure units of the kernel are in Pa."""
+    if(kern.plev.units != 'Pa'):
+        kern['plev'] = kern.plev*100
+        kern.plev.attrs['units'] = 'Pa'
+    else:
+        pass
+    return(kern)
 
 def __calc_qs__(temp):
     """Calculate either the saturated specific humidity or mixing ratio
