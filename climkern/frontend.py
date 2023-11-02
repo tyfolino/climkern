@@ -207,12 +207,12 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     # for lapse rate, use the deviation of the air temperature response
     # from vertically uniform warming
     lr_feedback = ((ta_kernel * (diff_ta - diff_ts).fillna(0)) * dp/100
-                  ).sum(dim='plev')
+                  ).sum(dim='plev',min_count=1)
     
     # for planck, assume vertically uniform warming and 
     # account for surface temperature change
     planck_feedback = ((ts_kernel * diff_ts) + (ta_kernel * xr.broadcast(
-        diff_ts,diff_ta)[0].fillna(0) * dp/100).sum(dim='plev'))
+        diff_ts,diff_ta)[0].fillna(0) * dp/100).sum(dim='plev',min_count=1))
        
     return(lr_feedback,planck_feedback)
 
@@ -365,8 +365,16 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop,kern='GFDL'
     dp['plev'] = diff_q.plev
                     
     # calculate feedbacks
-    qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/100).sum(dim='plev')
-    qsw_feedback = (qsw_kernel/norm * diff_q * conv_factor * dp/100).sum(dim='plev')
+    qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/100).sum(
+        dim='plev',min_count=1)
+    qsw_feedback = (qsw_kernel/norm * diff_q * conv_factor * dp/100).sum(
+        dim='plev',min_count=1).fillna(0)
+
+    # one complication: CloudSat needs to be masked so we don't fill the NaNs
+    # with zeros
+    if(kern=='CloudSat'):
+        qsw_feedback = qsw_feedback.where(qsw_kernel.sum(
+            dim='plev',min_count=1).notnull())
     
     return(qlw_feedback,qsw_feedback)
 
@@ -607,8 +615,8 @@ def calc_cloud_LW_res(ctrl_FLNT,pert_FLNT,IRF_lw,t_lw,q_lw):
         simulation. It should have coordinates of lat, lon, and time and
         be in units of Wm^-2.
 
-    IRF_lw : xarray DataArray
-        The longwave all-sky instantaneous radiative forcing in units of Wm^-2
+    ERF_lw : xarray DataArray
+        The longwave all-sky effective radiative forcing in units of Wm^-2
         with coords of lat, lon, and time.
 
     t_lw : xarray DataArray
@@ -636,7 +644,7 @@ def calc_cloud_LW_res(ctrl_FLNT,pert_FLNT,IRF_lw,t_lw,q_lw):
     lw_cld_feedback = dR_lw - (irf_coeff * IRF_lw) - t_lw - q_lw
     return(lw_cld_feedback)
 
-def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,IRF_sw,q_sw,alb_sw):
+def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,ERF_sw,q_sw,alb_sw):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
@@ -653,7 +661,7 @@ def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,IRF_sw,q_sw,alb_sw):
         simulation. It should have coordinates of lat, lon, and time and
         be in units of Wm^-2.
 
-    IRF_sw : xarray DataArray
+    ERF_sw : xarray DataArray
         The shortwave all-sky instantaneous radiative forcing in units of Wm^-2
         with coords of lat, lon, and time.
 
@@ -675,7 +683,7 @@ def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,IRF_sw,q_sw,alb_sw):
     # Calculate ΔR as the difference in net shortwave flux
     dR_sw = pert_FSNT - ctrl_FSNT
 
-    sw_cld_feedback = dR_sw - IRF_sw - q_sw - alb_sw
+    sw_cld_feedback = dR_sw - ERF_sw - q_sw - alb_sw
     return(sw_cld_feedback)
     
     
