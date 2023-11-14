@@ -12,6 +12,49 @@ warnings.formatwarning = custom_formatwarning
 
 warnings.filterwarnings('ignore','.*does not create an index anymore.*')
 
+def get_dp(ds_4D,ps,tropo,layer='troposphere'):
+    """Calculate layer thickness using model pressure levels, surface
+    pressure, and tropopause pressure. Also specify the layer as either
+    'troposphere' or 'stratosphere'."""
+    # construct a 4D DataArray corresponding to layer thickness
+    # for vertical integration later
+    # this is achieved by finding the midpoints between pressure levels
+    # and bounding that array with surface pressure below
+    # and TOA (p=0) above
+    aligned = xr.align(ds_4D.plev[1:],ds_4D.plev[:-1],join='override')
+    mids = xr.broadcast((aligned[0] + aligned[1])/2,ps)[0]
+    ps_expand = ps.expand_dims(dim={"plev":[ds_4D.plev[0]]},axis=1)
+    
+    TOA = xr.zeros_like(ps_expand)
+    TOA['plev']=ps_expand.plev*0
+
+    # this if/else statement accounts for potentially
+    # reversed pressure axis direction
+    if(ds_4D.plev[0] > ds_4D.plev[-1]):
+        ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
+        sign_change = -1
+    else:
+        ilevs = xr.concat([TOA,mids,ps_expand],dim='plev')
+        sign_change = 1
+
+    if(layer=='troposphere'):
+        # make points above tropopause equal to tropopause height
+        # make points below surface pressure equal to surface pressure
+        ilevs = ilevs.where(ilevs>tropo,tropo).where(ilevs<ps,ps)
+    elif(layer=='stratosphere'):
+        # make points below tropopause equal to tropopause height
+        ilevs = ilevs.where(ilevs<tropo,tropo)
+
+    # get the layer thickness by taking finite difference 
+    # along pressure axis
+    dp = sign_change * ilevs.diff(dim='plev',label='lower')
+
+    # override pressure axis so xarray doesn't throw a fit
+    dp['plev'] = ds_4D.plev
+
+    # return dp
+    return(dp)
+
 def check_var_units(da,var):
     """Check to see if the xarray DataArray has a units attribute."""
     if('units' not in da.attrs):
@@ -31,7 +74,8 @@ def make_tropo(PS):
 
 def check_plev_units(da):
     if('units' not in da.plev.attrs):
-        warnings.warn('No units found for input vertical coordinate. Assuming Pa.')
+        warnings.warn(
+            'No units found for input vertical coordinate. Assuming Pa.')
         plev = da.plev.assign_attrs({'units':'Pa'})
         return(da.assign_coords({'plev':plev}))
     elif(da.plev.units in ['hPa','mb','millibars']):
@@ -69,14 +113,16 @@ def get_kern(name,loc='TOA'):
     try:
         data = xr.open_dataset(files('climkern').joinpath(path))
     except(ValueError):
-        data = xr.open_dataset(files('climkern').joinpath(path),decode_times=False)
+        data = xr.open_dataset(files('climkern').joinpath(
+            path),decode_times=False)
     return check_coords(data)
 
 def make_clim(da):
     "Produce monthly climatology of model field."
     # da = _check_time(da)
     try:
-        clim = da.groupby(da.time.dt.month).mean(dim='time',skipna=True).rename(
+        clim = da.groupby(da.time.dt.month).mean(
+            dim='time',skipna=True).rename(
             {'month':'time'})
     except(TypeError):
         # TypeError if time is not datetime object
@@ -84,7 +130,8 @@ def make_clim(da):
     return clim
 
 def get_albedo(SWup,SWdown):
-    """Calculate the surface albedo as the ratio of upward to downward sfc shortwave."""
+    """Calculate the surface albedo as the ratio of upward to
+    downward sfc shortwave."""
     # avoid dividing by 0 and assign 0 to those grid boxes
     # SWup = _check_time(SWup)
     # SWdown = _check_time(SWdown)
@@ -100,7 +147,7 @@ def check_plev(kern):
     return(kern)
 
 def __calc_qs__(temp):
-    """Calculate either the saturated specific humidity or mixing ratio
+    """Calculate either the saturated specific humidity
     given temperature and pressure."""
     if(temp.plev.units=='Pa'):
         pres = temp.plev/100
@@ -142,7 +189,7 @@ def __calc_qs__(temp):
     qs['units'] = 'kg/kg'
     return(qs)
 
-def calc_q_norm(ctrl_ta,ctrl_q,logq=False):
+def calc_q_norm(ctrl_ta,ctrl_q,method):
     """Calculate the change in specific humidity for 1K warming
     assuming fixed relative humidity."""
     if(ctrl_q.units=='g/kg'):
@@ -159,26 +206,31 @@ def calc_q_norm(ctrl_ta,ctrl_q,logq=False):
     ta1K.attrs = ctrl_ta.attrs
     qs1K = __calc_qs__(ta1K)
 
-    if(logq==False):
+    if(method=='linear'):
         # get the new specific humidity using the same RH
         q1K = qs1K * RH
         q1K['units'] = 'kg/kg'
     
         # take the difference
         dq1K = 1000 * (q1K - ctrl_q)
-        dq1K['units'] = 'g/kg/K'
-
         return(dq1K)
-    else:
+        
+    elif(method in ['pendergrass','kramer']):
         dqsdT = qs1K - qs0
-        dqsdT = ((RH / ctrl_q) * dqsdT * 1000)
-        dqsdT['units'] = 'g/kg/K'
+        dqdT = RH * dqsdT
 
-        return(dqsdT)
+        dlogqdT = 1000 * (dqdT / ctrl_q)
+        return(dlogqdT)
+        
+    elif(method=='zelinka'):
+        dlogqdT = 1000 * (np.log(qs1K) - np.log(qs0))
+        return(dlogqdT)
+        
 def check_sky(sky):
     """Make sure the sky argument is either all-sky or clear-sky"""
     if(sky not in ['all-sky','clear-sky']):
-        raise ValueError('The sky argument must either be all-sky or clear-sky.')
+        raise ValueError(
+            'The sky argument must either be all-sky or clear-sky.')
     else:
         return(sky)
 
@@ -191,16 +243,19 @@ def check_coords(ds,ndim=3):
     elif('month' in ds.dims):
         ds = ds.rename({'month':'time'})
     else:
-        raise AttributeError('There is no \'time\' or \'month\' dimension in\
+        raise AttributeError(
+            'There is no \'time\' or \'month\' dimension in\
         one of the input DataArrays. Please rename your time dimension(s).')
 
     # lat and lon
     if('lat' not in ds.dims and 'latitude' not in ds.dims):
-        raise AttributeError('There is no \'lat\' or \'latitude\' dimension in\
+        raise AttributeError(
+            'There is no \'lat\' or \'latitude\' dimension in\
         one of the input DataArrays. Please rename your lat dimension(s).')
 
     if('lon' not in ds.dims and 'longitude' not in ds.dims):
-        raise AttributeError('There is no \'lon\' or \'longitude\' dimension in\
+        raise AttributeError(
+            'There is no \'lon\' or \'longitude\' dimension in\
         one of the input DataArrays. Please rename your lat dimension(s).')
 
     if(ndim==4):

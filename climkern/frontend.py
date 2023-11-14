@@ -8,6 +8,7 @@ from climkern.util import make_clim,get_albedo,tile_data,get_kern
 from climkern.util import check_plev,calc_q_norm,check_sky,check_coords
 from climkern.util import check_var_units,custom_formatwarning
 from climkern.util import check_pres_units,check_plev_units,make_tropo
+from climkern.util import get_dp
 
 warnings.formatwarning = custom_formatwarning
 
@@ -183,36 +184,9 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     # kernel's. We will also mask values below the surface.
     diff_ta = diff_ta.interp_like(ta_kernel,kwargs={
         "fill_value": "extrapolate"})
-    
-    # construct a 4D DataArray corresponding to layer thickness
-    # for vertical integration later
-    # this is achieved by finding the midpoints between pressure levels
-    # and bounding that array with surface pressure below
-    # and TOA (p=0) above
-    aligned = xr.align(diff_ta.plev[1:],diff_ta.plev[:-1],join='override')
-    mids = xr.broadcast((aligned[0] + aligned[1])/2,pert_ps)[0]
-    ps_expand = pert_ps.expand_dims(dim={"plev":[diff_ta.plev[0]]},axis=1)
-    
-    TOA = xr.zeros_like(ps_expand)
-    TOA['plev']=ps_expand.plev*0
 
-    # this if/else statement accounts for potentially reversed pressure axis direction
-    if(diff_ta.plev[0] > diff_ta.plev[-1]):
-        ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
-        sign_change = -1
-    else:
-        ilevs = xr.concat([TOA,mids,ps_expand],dim='plev')
-        sign_change = 1
-
-    # make points above tropopause equal to tropopause height
-    # make points below surface pressure equal to surface pressure
-    ilevs = ilevs.where(ilevs>pert_trop,pert_trop).where(ilevs<pert_ps,pert_ps)
-
-    # get the layer thickness by taking finite difference along pressure axis
-    dp = sign_change * ilevs.diff(dim='plev',label='lower')
-
-    # override pressure axis so xarray doesn't throw a fit
-    dp['plev'] = diff_ta.plev
+    # use get_dp in climkern.util to calculate layer thickness
+    dp = get_dp(diff_ta,pert_ps,pert_trop,layer='troposphere')
     
     # calculate feedbacks
     # for lapse rate, use the deviation of the air temperature response
@@ -229,7 +203,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
 
 
 def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
-                     kern='GFDL',sky='all-sky',logq=False):
+                     kern='GFDL',sky='all-sky',method='pendergrass'):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -270,9 +244,10 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
     sky : string
         String specifying whether the all-sky or clear-sky kernels should be used.
 
-    logq : boolean
-        Specifies whether to use the natural log of the specific humidity to calculate the
-        water vapor feedbacks. Defaults to False.
+    method : string
+        Specifies the method to use to calculate the specific humidity
+        feedback. Options are "pendergrass" (default), "kramer", "zelinka",
+        and "linear". 
 
     Returns
     -------
@@ -328,11 +303,15 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
         warnings.warn("Cannot determine units of q. Assuming kg/kg.")
         conv_factor = 1000
 
-    # calculate change in q
-    if(logq==False):
+    if(method=='pendergrass'):
+        diff_q = (pert_q - tile_data(ctrl_q_clim,pert_q))/tile_data(ctrl_q_clim,pert_q)
+    elif(method=='linear'):
         diff_q = pert_q - tile_data(ctrl_q_clim,pert_q)
-    elif((logq==True)):
+    elif(method in ['kramer','zelinka']):
         diff_q = np.log(pert_q) - np.log(tile_data(ctrl_q_clim,pert_q))
+    else:
+        raise ValueError(
+            "Please select a valid choice for the method argument.")
     
     # read in and regrid water vapor kernel
     kernel = check_plev(get_kern(kern))
@@ -351,37 +330,10 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
     ctrl_ta_clim = ctrl_ta_clim.interp(plev=qlw_kernel.plev,kwargs=kwargs)
     ctrl_ta_clim.plev.attrs['units'] = ctrl_ta.plev.units
 
-    norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,logq=logq),diff_q)
+    norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,method=method),diff_q)
     
-    # construct a 4D DataArray corresponding to layer thickness
-    # for vertical integration later
-    # this is achieved by finding the midpoints between pressure levels
-    # and bounding that array with surface pressure below
-    # and TOA (p=0) above
-    aligned = xr.align(diff_q.plev[1:],diff_q.plev[:-1],join='override')
-    mids = xr.broadcast((aligned[0] + aligned[1])/2,pert_ps)[0]
-    ps_expand = pert_ps.expand_dims(dim={"plev":[diff_q.plev[0]]},axis=1)
-    
-    TOA = xr.zeros_like(ps_expand)
-    TOA['plev']=ps_expand.plev*0
-
-    # this if/else statement accounts for potentially reversed pressure axis direction
-    if(diff_q.plev[0] > diff_q.plev[-1]):
-        ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
-        sign_change = -1
-    else:
-        ilevs = xr.concat([TOA,mids,ps_expand],dim='plev')
-        sign_change = 1
-
-    # make points above tropopause equal to tropopause height
-    # make points below surface pressure equal to surface pressure
-    ilevs = ilevs.where(ilevs>pert_trop,pert_trop).where(ilevs<pert_ps,pert_ps)
-
-    # get the layer thickness by taking finite difference along pressure axis
-    dp = ilevs.diff(dim='plev',label='lower') * sign_change
-
-    # override pressure axis so xarray doesn't throw a fit
-    dp['plev'] = diff_q.plev
+    # use get_dp in climkern.util to calculate layer thickness
+    dp = get_dp(diff_q,pert_ps,pert_trop,layer='troposphere')
                     
     # calculate feedbacks
     qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/10000).sum(
@@ -785,35 +737,8 @@ def calc_strato_T(ctrl_ta,pert_ta,pert_ps,pert_trop=None,kern='GFDL',
     diff_ta = diff_ta.interp_like(ta_kernel,kwargs={
         "fill_value": "extrapolate"})
     
-    # construct a 4D DataArray corresponding to layer thickness
-    # for vertical integration later
-    # this is achieved by finding the midpoints between pressure levels
-    # and bounding that array with surface pressure below
-    # and TOA (p=0) above
-    aligned = xr.align(diff_ta.plev[1:],diff_ta.plev[:-1],join='override')
-    mids = xr.broadcast((aligned[0] + aligned[1])/2,pert_ps)[0]
-    ps_expand = pert_ps.expand_dims(dim={"plev":[diff_ta.plev[0]]},axis=1)
-    
-    TOA = xr.zeros_like(ps_expand)
-    TOA['plev']=ps_expand.plev*0
-
-    # this if/else statement accounts for potentially reversed pressure axis direction
-    if(diff_ta.plev[0] > diff_ta.plev[-1]):
-        ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
-        sign_change = -1
-    else:
-        ilevs = xr.concat([TOA,mids,ps_expand],dim='plev')
-        sign_change = 1
-
-    # make points above tropopause equal to tropopause height
-    # make points below surface pressure equal to surface pressure
-    ilevs = ilevs.where(ilevs<pert_trop,pert_trop)
-
-    # get the layer thickness by taking finite difference along pressure axis
-    dp = sign_change * ilevs.diff(dim='plev',label='lower')
-
-    # override pressure axis so xarray doesn't throw a fit
-    dp['plev'] = diff_ta.plev
+    # use get_function in climkern.util to calculate layer thickness
+    dp = get_dp(diff_ta,pert_ps,pert_trop,layer='stratosphere')
 
     # calculate feedbacks
     # for lapse rate, use the deviation of the air temperature response
@@ -940,35 +865,8 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
 
     norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,logq=logq),diff_q)
     
-    # construct a 4D DataArray corresponding to layer thickness
-    # for vertical integration later
-    # this is achieved by finding the midpoints between pressure levels
-    # and bounding that array with surface pressure below
-    # and TOA (p=0) above
-    aligned = xr.align(diff_q.plev[1:],diff_q.plev[:-1],join='override')
-    mids = xr.broadcast((aligned[0] + aligned[1])/2,pert_ps)[0]
-    ps_expand = pert_ps.expand_dims(dim={"plev":[diff_q.plev[0]]},axis=1)
-    
-    TOA = xr.zeros_like(ps_expand)
-    TOA['plev']=ps_expand.plev*0
-
-    # this if/else statement accounts for potentially reversed pressure axis direction
-    if(diff_q.plev[0] > diff_q.plev[-1]):
-        ilevs = xr.concat([ps_expand,mids,TOA],dim='plev')
-        sign_change = -1
-    else:
-        ilevs = xr.concat([TOA,mids,ps_expand],dim='plev')
-        sign_change = 1
-
-    # make points above tropopause equal to tropopause height
-    # make points below surface pressure equal to surface pressure
-    ilevs = ilevs.where(ilevs<pert_trop,pert_trop)
-
-    # get the layer thickness by taking finite difference along pressure axis
-    dp = ilevs.diff(dim='plev',label='lower') * sign_change
-
-    # override pressure axis so xarray doesn't throw a fit
-    dp['plev'] = diff_q.plev
+    # use get_function in climkern.util to calculate layer thickness
+    dp = get_dp(diff_ta,pert_ps,pert_trop,layer='stratosphere')
                     
     # calculate feedbacks
     qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/10000).sum(

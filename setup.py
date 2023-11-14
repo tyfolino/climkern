@@ -19,7 +19,7 @@ INSTALL_REQUIRES = [
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='0.0.23',
+    version='0.1.1',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
