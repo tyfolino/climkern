@@ -78,7 +78,7 @@ def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
     return a_feedback
 
 def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
-                     pert_trop=None,kern='GFDL',sky='all-sky'):
+                     pert_trop=None,kern='GFDL',sky='all-sky',fixRH=False):
     """
     Calculate the LW radiative perturbations (W/m^2) from changes in surface skin
     and air temperature at the TOA or surface with the specified radiative kernel.
@@ -123,6 +123,11 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
         String specifying whether the all-sky or clear-sky feedbacks 
         should be used.
 
+    fixRH : boolean
+        Specifies whether to calculate alternative Planck and lapse rate
+        feedbacks using relative humidity as a state variable, as outlined
+        in Held & Shell (2012).
+
     Returns
     -------
     lr_feedback : xarray DataArray
@@ -137,6 +142,9 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
     """
     t_key = 'lw_t' if check_sky(sky)=='all-sky' else 'lwclr_t'
     ts_key = 'lw_ts' if sky=='all-sky' else 'lwclr_ts'
+    if(fixRH==True):
+        qlw_key = 'lw_q' if sky=='all-sky' else 'lwclr_q'
+        qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
 
     # check model output coordinates
     for d in [ctrl_ta,pert_ta]:
@@ -178,6 +186,11 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
                             extrap_method='nearest_s2d')
     ta_kernel = tile_data(regridder(kernel[t_key]),diff_ta)
     ts_kernel = tile_data(regridder(kernel[ts_key],skipna=True),diff_ta)
+    if(fixRH==True):
+        qlw_kernel = tile_data(regridder(kernel[qlw_key]),diff_ta)
+        qsw_kernel = tile_data(regridder(kernel[qsw_key]),diff_ta)
+        # overwrite ta_kernel to include q kernel
+        ta_kernel = ta_kernel + qlw_kernel + qsw_kernel
 
     # regrid diff_ta to kernel pressure levels
     # we have to extrapolate in case the lowest model plev is above the
@@ -749,7 +762,7 @@ def calc_strato_T(ctrl_ta,pert_ta,pert_ps,pert_trop=None,kern='GFDL',
     return(T_feedback)
 
 def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
-                     kern='GFDL',sky='all-sky',logq=False):
+                     kern='GFDL',sky='all-sky',method='pendergrass'):
     """
     Calculate the LW and SW radiative perturbations (W/m^2) using model output
     specific humidity and the chosen radiative kernel. Horizontal resolution
@@ -789,6 +802,11 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
     logq : boolean
         Specifies whether to use the natural log of the specific humidity to calculate the
         water vapor feedbacks. Defaults to False.
+
+    method : string
+        Specifies the method to use to calculate the specific humidity
+        feedback. Options are "pendergrass" (default), "kramer", "zelinka",
+        and "linear". 
 
     Returns
     -------
@@ -840,11 +858,15 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
         warnings.warn("Cannot determine units of q. Assuming kg/kg.")
         conv_factor = 1000
 
-    # calculate change in q
-    if(logq==False):
+    if(method=='pendergrass'):
+        diff_q = (pert_q - tile_data(ctrl_q_clim,pert_q))/tile_data(ctrl_q_clim,pert_q)
+    elif(method=='linear'):
         diff_q = pert_q - tile_data(ctrl_q_clim,pert_q)
-    elif((logq==True)):
+    elif(method in ['kramer','zelinka']):
         diff_q = np.log(pert_q) - np.log(tile_data(ctrl_q_clim,pert_q))
+    else:
+        raise ValueError(
+            "Please select a valid choice for the method argument.")
     
     # read in and regrid water vapor kernel
     kernel = check_plev(get_kern(kern))
@@ -863,10 +885,10 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
     ctrl_ta_clim = ctrl_ta_clim.interp(plev=qlw_kernel.plev,kwargs=kwargs)
     ctrl_ta_clim.plev.attrs['units'] = ctrl_ta.plev.units
 
-    norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,logq=logq),diff_q)
+    norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,method=method),diff_q)
     
     # use get_function in climkern.util to calculate layer thickness
-    dp = get_dp(diff_ta,pert_ps,pert_trop,layer='stratosphere')
+    dp = get_dp(diff_q,pert_ps,pert_trop,layer='stratosphere')
                     
     # calculate feedbacks
     qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/10000).sum(
@@ -881,4 +903,158 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
             dim='plev',min_count=1).notnull())
     
     return(qlw_feedback,qsw_feedback)
+
+def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
+                     pert_trop=None,kern='GFDL',sky='all-sky',
+                     method='pendergrass'):
+    """
+    Calculate the TOA radiative perturbations from changes in relative
+    humidity following Held & Shell (2012). Horizontal resolution is 
+    kept at input data's resolution.
+    
+    Parameters
+    ----------
+    ctrl_q : xarray DataArray
+        Contains specific humidity on pressure levels in the control simulation.
+        Must be 4D with coords of time, lat, lon, and plev with units of either
+        "1", "kg/kg", or "g/kg".
+
+    ctrl_ta : xarray DataArray
+        Contains air temperature on pressure levels in the control simulation.
+        Must be 4D with coords of time, lat, lon, and plev with units of either
+        "K" or "C".
+        
+    ctrl_ps : xarray DataArray
+        Contains the surface pressure in the control simulation. Must
+        be 3D with coords of time, lat, and lon.
+        
+    pert_q : xarray DataArray
+        Contains specific on pressure levels in the perturbed simulation.
+        Must be 4D with coords of time, lat, lon, and plev with units of either
+        "1", "kg/kg", or "g/kg".
+
+    pert_ta : xarray DataArray
+        Contains air temperature on pressure levels in the perturbed 
+        simulation. Must be 4D with coords of time, lat, lon, and plev
+        with units of either "K" or "C".
+        
+    pert_ps : xarray DataArray
+        Contains the surface pressure in the perturbed simulation. Must
+        be 3D with coords of time, lat, and lon.
+        
+    pert_trop : xarray DataArray
+        Contains the tropopause height in the perturbed simulation. Must
+        be 3D with coords of time, lat, and lon. If none is provided, function
+        will assume a makeshift tropopause.
+
+    kern : string
+        String specifying the institution name of the desired kernels. Defaults to GFDL.
+
+    sky : string
+        String specifying whether the all-sky or clear-sky kernels should be used.
+
+    method : string
+        Specifies the method to use to calculate the specific humidity
+        feedback. Options are "pendergrass" (default), "kramer", "zelinka",
+        and "linear". 
+
+    Returns
+    -------
+    RH_feedback : xarray DataArray
+        3D DataArray containing the vertically integrated radiative 
+        perturbations from changes in relative humidity (LW+SW).
+        Has coordinates of time, lat, and lon.
+    """
+    qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
+    qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
+
+    # check model output coordinates
+    for d in [ctrl_q,ctrl_ta,pert_q,pert_ta]:
+        d = check_coords(d,ndim=4)
+    for d in [ctrl_ps,pert_ps]:
+        d = check_coords(d)
+
+    # unit check
+    ctrl_ta = check_var_units(check_plev_units(ctrl_ta),'T')
+    pert_ta = check_var_units(check_plev_units(pert_ta),'T')
+    ctrl_q = check_var_units(check_plev_units(ctrl_q),'q')
+    pert_q = check_var_units(check_plev_units(pert_q),'q')
+
+    # check units of ps and trop
+    ctrl_ps = check_pres_units(ctrl_ps,"ctrl PS")
+    pert_ps = check_pres_units(pert_ps,"pert PS")
+
+    # make a fake tropopause if it's not provided
+    if(type(pert_trop) == type(None)):
+        pert_trop = make_tropo(ctrl_ps)
+    else:
+        pert_trop = check_coords(pert_trop)
+        pert_trop = check_pres_units(pert_trop,"pert tropopause")
+    
+    # make climatology
+    ctrl_ps_clim = make_clim(ctrl_ps)
+    ctrl_q_clim = make_clim(ctrl_q)
+    ctrl_q_clim = ctrl_q_clim.where(ctrl_q_clim.plev<ctrl_ps_clim)
+    ctrl_ta_clim = make_clim(ctrl_ta)
+    ctrl_ta_clim = ctrl_ta_clim.where(ctrl_ta_clim.plev<ctrl_ps_clim)
+
+    # if q has units of unity or kg/kg, we will have to 
+    # multiply by 1000 later on to make it g/kg
+    if(ctrl_q.units in ['1','kg/kg']):
+        conv_factor = 1000
+    elif(ctrl_q.units in ['g/kg']):
+        conv_factor = 1
+    else:
+        warnings.warn("Cannot determine units of q. Assuming kg/kg.")
+        conv_factor = 1000
+
+    # the formulation of the q response depends on the method used
+    if(method=='pendergrass'):
+        diff_q = (pert_q - tile_data(ctrl_q_clim,pert_q))/tile_data(
+            ctrl_q_clim,pert_q)
+    elif(method=='linear'):
+        diff_q = pert_q - tile_data(ctrl_q_clim,pert_q)
+    elif(method in ['kramer','zelinka']):
+        diff_q = np.log(pert_q) - np.log(tile_data(ctrl_q_clim,pert_q))
+    else:
+        raise ValueError(
+            "Please select a valid choice for the method argument.")
+
+    # for the RH feedback, we also need the T response
+    diff_ta = pert_ta - tile_data(ctrl_ta_clim,pert_ta)
+    
+    # read in and regrid water vapor kernel
+    kernel = check_plev(get_kern(kern))
+    regridder = xe.Regridder(kernel[qlw_key],diff_q,method='bilinear',
+                             extrap_method="nearest_s2d",
+                             reuse_weights=False,periodic=True)
+    q_kernel = kernel[qlw_key] + kernel[qsw_key]
+    q_kernel = tile_data(regridder(q_kernel,skipna=True),diff_q)
+
+    # regrid diff_q, ctrl_q_clim, and ctrl_ta_clim to kernel pressure levels
+    kwargs = {'fill_value':'extrapolate'}
+    diff_q = diff_q.interp_like(q_kernel,kwargs=kwargs)
+    diff_ta = diff_ta.interp_like(q_kernel,kwargs=kwargs)
+    ctrl_q_clim = ctrl_q_clim.interp(plev=q_kernel.plev,kwargs=kwargs)
+    ctrl_q_clim.plev.attrs['units'] = ctrl_q.plev.units
+    ctrl_ta_clim = ctrl_ta_clim.interp(plev=q_kernel.plev,kwargs=kwargs)
+    ctrl_ta_clim.plev.attrs['units'] = ctrl_ta.plev.units
+
+    norm = tile_data(calc_q_norm(ctrl_ta_clim,ctrl_q_clim,method=method),diff_q)
+    
+    # use get_dp in climkern.util to calculate layer thickness
+    dp = get_dp(diff_q,pert_ps,pert_trop,layer='troposphere')
+
+    # calculate RH_feedback
+    RH_feedback = ((q_kernel/norm * diff_q * conv_factor * dp/10000)
+                   - (q_kernel * diff_ta * dp/10000)).sum(
+        dim='plev',min_count=1).fillna(0)
+
+    # one complication: CloudSat needs to be masked so we don't fill the NaNs
+    # with zeros
+    if(kern=='CloudSat'):
+        RH_feedback = RH_feedback.where(q_kernel.sum(
+            dim='plev',min_count=1).notnull())
+    
+    return(RH_feedback)
     
