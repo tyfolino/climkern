@@ -10,6 +10,8 @@ def custom_formatwarning(msg,cat,*args,**kwargs):
     return(str(cat.__name__) + ': ' + str(msg) + '\n')
 warnings.formatwarning = custom_formatwarning
 
+# filter out warnings from xarray when using the rename function
+# ideally, this can be removed in the future
 warnings.filterwarnings('ignore','.*does not create an index anymore.*')
 
 def get_dp(ds_4D,ps,tropo,layer='troposphere'):
@@ -223,7 +225,8 @@ def calc_q_norm(ctrl_ta,ctrl_q,method):
         return(dlogqdT)
         
     elif(method=='zelinka'):
-        dlogqdT = 1000 * (np.log(qs1K) - np.log(qs0))
+        dlogqdT = 1000 * (np.log(qs1K.where(qs1K>0)) - np.log(
+            qs0.where(qs0>0)))
         return(dlogqdT)
         
 def check_sky(sky):

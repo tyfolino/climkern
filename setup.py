@@ -13,13 +13,13 @@ INSTALL_REQUIRES = [
     'xesmf>=0.7.1',
     'esmpy',
     'importlib_resources',
-    'netcdf4'
+#    'netcdf4'
 ]
 
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='0.1.1',
+    version='1.0.0',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
