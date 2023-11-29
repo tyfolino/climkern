@@ -3,13 +3,10 @@ import xarray as xr
 import xesmf as xe
 import warnings
 import numpy as np
+from importlib_resources import files
 
 # import functions from util.py
-from climkern.util import make_clim,get_albedo,tile_data,get_kern
-from climkern.util import check_plev,calc_q_norm,check_sky,check_coords
-from climkern.util import check_var_units,custom_formatwarning
-from climkern.util import check_pres_units,check_plev_units,make_tropo
-from climkern.util import get_dp
+from climkern.util import *
 
 # change warning format
 warnings.formatwarning = custom_formatwarning
@@ -1109,4 +1106,26 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
             dim='plev',min_count=1).notnull())
     
     return(RH_feedback)
-    
+
+def tutorial_data(label):
+    """
+    Retrieve tutorial data which should be located in the package's
+    "data" folder.
+
+    Parameters
+    ----------
+    name : string
+        Specifies which data to access. Choices are "ctrl", "pert", "IRF", or 
+        "adjRF" for the 1xCO2, 2xCO2, instantaneous radiative forcing, and
+        stratosphere-adjusted radiative forcing, respectively.
+
+    Returns
+    -------
+    data : xarray Dataset
+        Requested tutorial dataset.
+    """
+    if label not in ['ctrl','pert','IRF','adjRF']:
+        raise ValueError('Invalid data name. See docstring for options.')
+    path = 'data/tutorial_data/'+ label + ".nc"
+    data = xr.open_dataset(files('climkern').joinpath(path))
+    return data

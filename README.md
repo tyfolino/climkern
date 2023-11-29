@@ -11,4 +11,13 @@ ClimKern
 
 ## Installation
 
-ClimKern is built on the architecture of Xarray and requires several other packages for compatibility with climate model output. Although nearly all packages are available via pip, esmpy is only available via conda.
+ClimKern is built on the architecture of Xarray and requires several other packages for compatibility with climate model output. The easiest method to install is to create a new conda environment with prerequisite packages using [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) or [mamba](https://mamba-framework.readthedocs.io/en/latest/installation_guide.html):
+`conda create -n ckenv python=3.9 esmpy xarray xesmf cftime`
+or
+`mamba create -n ckenv python=3.9 esmpy xarray xesmf cftime`
+Then, activate the environment:
+`conda activate ckenv`
+or
+`mamba activate ckenv`
+Finally, install ClimKern with pip:
+`pip install -i https://test.pypi.org/simple/ climkern`

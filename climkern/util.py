@@ -111,7 +111,7 @@ def tile_data(to_tile,new_shape):
 
 def get_kern(name,loc='TOA'):
     """read in kernel from local directory"""
-    path = 'data/'+name + '/' +loc + '_' + str(name) + "_Kerns.nc"
+    path = 'data/kernels/'+name + '/' +loc + '_' + str(name) + "_Kerns.nc"
     try:
         data = xr.open_dataset(files('climkern').joinpath(path))
     except(ValueError):
