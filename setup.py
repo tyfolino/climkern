@@ -13,7 +13,8 @@ INSTALL_REQUIRES = [
     'xesmf>=0.7.1',
     'esmpy',
     'importlib_resources',
-#    'netcdf4'
+    'pooch',
+    'tqdm'
 ]
 
 setup(
