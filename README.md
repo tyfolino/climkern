@@ -12,12 +12,16 @@ ClimKern
 ## Installation
 
 ClimKern is built on the architecture of Xarray and requires several other packages for compatibility with climate model output. The easiest method to install is to create a new conda environment with prerequisite packages using [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) or [mamba](https://mamba-framework.readthedocs.io/en/latest/installation_guide.html):  
-`conda create -n ckenv python=3.9 esmpy xarray xesmf cftime`  
+`conda create -n ckenv python=3.9 esmpy xarray xesmf cftime pooch tqdm`  
 or  
-`mamba create -n ckenv python=3.9 esmpy xarray xesmf cftime`  
-Then, activate the environment:  
+`mamba create -n ckenv python=3.9 esmpy xarray xesmf cftime pooch tqdm` 
+<br></br>Then, activate the environment:  
 `conda activate ckenv`  
 or  
-`mamba activate ckenv`  
-Finally, install ClimKern with pip:  
-`pip install -i https://test.pypi.org/simple/ climkern`  
+`mamba activate ckenv` 
+<br></br>
+Finally, install ClimKern with [pip](https://pip.pypa.io/en/stable/#):  
+`pip install -i https://test.pypi.org/simple/ climkern`
+<br></br>
+Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10223376). These kernels (and tutorial data) are stored separately because of PyPI size limitations. You can download the kernels easily using the download script included in the package.  
+`python -m climkern download`
