@@ -15,13 +15,13 @@ INSTALL_REQUIRES = [
     'importlib_resources',
     'pooch',
     'tqdm',
-    'prac'
+    'plac'
 ]
 
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='1.0.2',
+    version='1.0.3',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
