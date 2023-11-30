@@ -14,13 +14,14 @@ INSTALL_REQUIRES = [
     'esmpy',
     'importlib_resources',
     'pooch',
-    'tqdm'
+    'tqdm',
+    'prac'
 ]
 
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='1.0.1',
+    version='1.0.2',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
