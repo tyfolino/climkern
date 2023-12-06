@@ -1,9 +1,10 @@
 from setuptools import setup, find_packages
 
 DISTNAME = 'climkern'
-DESCRIPTION = 'Radiative Kernel Tool for Calculating Climate Feedbacks'
+DESCRIPTION = 'Python package for calculating radiative feedbacks using \
+radiative kernels.'
 AUTHOR = 'Ty Janoski'
-AUTHOR_EMAIL = 'janoski@ldeo.columbia.edu'
+AUTHOR_EMAIL = 'tjanoski@ccny.cuny.edu'
 PYTHON_REQUIRES = '>=3.9'
 
 INSTALL_REQUIRES = [
@@ -15,7 +16,8 @@ INSTALL_REQUIRES = [
     'importlib_resources',
     'pooch',
     'tqdm',
-    'plac'
+    'plac',
+    'netCDF4'
 ]
 
 setup(
@@ -26,8 +28,5 @@ setup(
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
-    packages=find_packages(),
-    package_data={
-        'climkern':['data/*.nc'],
     }
 )
