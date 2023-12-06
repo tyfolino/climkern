@@ -1,8 +1,6 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 DISTNAME = 'climkern'
-DESCRIPTION = 'Python package for calculating radiative feedbacks using \
-radiative kernels.'
 AUTHOR = 'Ty Janoski'
 AUTHOR_EMAIL = 'tjanoski@ccny.cuny.edu'
 PYTHON_REQUIRES = '>=3.9'
@@ -20,12 +18,20 @@ INSTALL_REQUIRES = [
     'netCDF4'
 ]
 
+# get README file
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='1.0.4',
+    version='1.0.5',
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
-    install_requires=INSTALL_REQUIRES
+    install_requires=INSTALL_REQUIRES,
+    long_description=long_description,
+    long_description_content_type='text/markdown'
 )
