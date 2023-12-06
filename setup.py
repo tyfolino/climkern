@@ -27,6 +27,5 @@ setup(
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
-    install_requires=INSTALL_REQUIRES,
-    }
+    install_requires=INSTALL_REQUIRES
 )
