@@ -29,7 +29,6 @@ setup(
     author=AUTHOR,
     version='1.0.5',
     author_email=AUTHOR_EMAIL,
-    description=DESCRIPTION,
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     long_description=long_description,
