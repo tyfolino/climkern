@@ -1,5 +1,12 @@
 # ClimKern: a Python package for calculating radiative feedbacks
 
+[![DOI](https://zenodo.org/badge/588323813.svg)](https://zenodo.org/doi/10.5281/zenodo.10291284)
+
+## Citation
+If you use this package or any part of this code, please cite it! Until we have a paper prepared, please cite this package at software.
+
+Janoski, T. P., & Mitevski, I. (2023, December 7). ClimKern (Version 1.0.0). Retrieved from https://pypi.org/project/climkern/1.0.0/. <https://doi.org/10.5281/zenodo.10291284>.
+
 ## Overview
 
 The radiative kernel technique outlined in [Soden & Held (2006)](https://journals.ametsoc.org/view/journals/clim/19/14/jcli3799.1.xml) and [Soden et al. (2008)](https://journals.ametsoc.org/view/journals/clim/21/14/2007jcli2110.1.xml) is commonly used to calculate climate feedbacks. The "kernels" refer to datasets containing the radiative sensitivities of TOA (or surface) radiation to changes in fields such as temperature, specific humidity, and surface albedo; they are typically computed using offline radiative transfer calculations.
