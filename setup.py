@@ -27,7 +27,7 @@ long_description = (this_directory / "README.md").read_text()
 setup(
     name=DISTNAME,
     author=AUTHOR,
-    version='1.0.5',
+    version='1.0.0',
     author_email=AUTHOR_EMAIL,
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,

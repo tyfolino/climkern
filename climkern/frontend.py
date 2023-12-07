@@ -1129,3 +1129,39 @@ def tutorial_data(label):
     path = 'data/tutorial_data/'+ label + ".nc"
     data = xr.open_dataset(files('climkern').joinpath(path))
     return data
+
+def spat_avg(data,lat_bound_s=-90,lat_bound_n=90):
+    """
+    Compute the spatial average while weighting for cos(latitude), optionally
+    specifying latitudinal boundaries.
+
+    Parameters
+    ----------
+    data : Xarray DataArray
+        3D input data over which to compute the spatial average.
+
+    lat_bound_s : float, optional
+        Latitude of the southern boundary of the area over which to average. 
+        Defaults to -90 to compute a global average.
+
+    lat_bound_n : float, optional
+        Latitude of the northern boundary of the area over which to average. 
+        Defaults to 90 to compute a global average.   
+
+    Returns
+    -------
+    avg : Xarray DataArray
+        New spatially averaged DataArray with latitude and longitude
+        coordinates now removed.
+    """
+    # check coords, constrain area of interest, and take zonal mean
+    data = check_coords(data).sel(lat=slice(lat_bound_s,lat_bound_n)).mean(
+        dim='lon')
+    # compute weights
+    weights = np.cos(np.deg2rad(data.lat))/np.cos(np.deg2rad(data.lat)).sum()
+
+    # compute average
+    avg = (data * weights).sum(dim='lat')
+
+    # return avg
+    return(avg)
