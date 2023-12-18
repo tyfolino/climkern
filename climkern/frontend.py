@@ -660,11 +660,11 @@ def calc_cloud_LW_res(ctrl_FLNT,pert_FLNT,RF_lw,t_lw,q_lw):
     lw_coeff = 1 if ctrl_FLNT.mean() < 0 else -1
     dR_lw = lw_coeff * (pert_FLNT - ctrl_FLNT)
 
-    irf_coeff = -1 if IRF_lw.mean() < 0 else 1
-    lw_cld_feedback = dR_lw - (irf_coeff * IRF_lw) - t_lw - q_lw
+    irf_coeff = -1 if RF_lw.mean() < 0 else 1
+    lw_cld_feedback = dR_lw - (irf_coeff * RF_lw) - t_lw - q_lw
     return(lw_cld_feedback)
 
-def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,ERF_sw,q_sw,alb_sw):
+def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,RF_sw,q_sw,alb_sw):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
@@ -707,7 +707,7 @@ def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,ERF_sw,q_sw,alb_sw):
     # Calculate ΔR as the difference in net shortwave flux
     dR_sw = pert_FSNT - ctrl_FSNT
 
-    sw_cld_feedback = dR_sw - ERF_sw - q_sw - alb_sw
+    sw_cld_feedback = dR_sw - RF_sw - q_sw - alb_sw
     return(sw_cld_feedback)
 
 def calc_strato_T(ctrl_ta,pert_ta,pert_ps,pert_trop=None,kern='GFDL',
