@@ -32,5 +32,8 @@ setup(
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     long_description=long_description,
-    long_description_content_type='text/markdown'
+    long_description_content_type='text/markdown',
+    extras_require = {
+        'tests': ["pytest"]
+    }
 )
