@@ -2,38 +2,3 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-# tools
-[tool.black]
-line-length = 88
-target-version = ["py310", "py311", "py312"]
-
-# https://github.com/charliermarsh/ruff
-[tool.ruff]
-line-length = 88
-target-version = "py310"
-extend-select = [
-    "E",      # style errors
-    "F",      # flakes
-    "D",      # pydocstyle
-    "I001",   # isort
-    "UP",     # pyupgrade
-    "N",      # pep8-naming
-    "C",      # flake8-comprehensions
-    "B",      # flake8-bugbear
-    "A001",   # flake8-builtins
-    "RUF",    # ruff-specific rules
-    "RUF100", # Unused noqa directive
-]
-extend-ignore = [
-    "D100", # Missing docstring in public module
-    "D101", # Missing docstring in public class
-    "D103", # Missing docstring in public function
-    "D107", # Missing docstring in __init__
-    "D203", # 1 blank line required before class docstring
-    "D205", # 1 blank line required between summary line and description
-    "D212", # Multi-line docstring summary should start at the first line
-    "D213", # Multi-line docstring summary should start at the second line
-    "D413", # Missing blank line after last section
-    "D416", # Section name should end with a colon
-    "N806", # Variable in function should be lowercase
-]
