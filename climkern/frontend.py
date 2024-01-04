@@ -1,8 +1,9 @@
 # import required packages
+import warnings
+
+import numpy as np
 import xarray as xr
 import xesmf as xe
-import warnings
-import numpy as np
 from importlib_resources import files
 from xarray import DataArray
 
@@ -187,7 +188,7 @@ def calc_T_feedbacks(
     ts_key = "lw_ts" if sky == "all-sky" else "lwclr_ts"
 
     # if using RH as a state variable, read in water vapor kernels too
-    if fixRH == True:
+    if fixRH is True:
         qlw_key = "lw_q" if sky == "all-sky" else "lwclr_q"
         qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
@@ -236,7 +237,7 @@ def calc_T_feedbacks(
     ts_kernel = tile_data(regridder(kernel[ts_key], skipna=True), diff_ta)
 
     # repeat process for water vapor kernels if using RH
-    if fixRH == True:
+    if fixRH is True:
         qlw_kernel = tile_data(regridder(kernel[qlw_key]), diff_ta)
         qsw_kernel = tile_data(regridder(kernel[qsw_key]), diff_ta)
         # overwrite ta_kernel to include q kernel
