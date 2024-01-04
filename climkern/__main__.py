@@ -1,7 +1,9 @@
 if __name__ == "__main__":
-    from .download import download
-    import plac
     import sys
+
+    import plac
+
+    from .download import download
 
     commands = {
         "download": download,
