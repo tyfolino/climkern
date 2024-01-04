@@ -4,9 +4,11 @@ import xesmf as xe
 import warnings
 import numpy as np
 from importlib_resources import files
+from xarray import DataArray
 
 # import functions from util.py
-from climkern.util import *
+# from climkern.util import *
+from .util import *
 
 # change warning format
 warnings.formatwarning = custom_formatwarning
@@ -14,9 +16,17 @@ warnings.formatwarning = custom_formatwarning
 # Apply warning filter to prevent xarray renaming warming
 # Ideally, this will be removed in the future
 warnings.filterwarnings('ignore','.*does not create an index anymore.*')
-
-def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
-                      sky="all-sky"):
+    
+# def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
+#                       sky="all-sky"):
+def calc_alb_feedback(
+    ctrl_rsus:DataArray,
+    ctrl_rsds:DataArray,
+    pert_rsus:DataArray,
+    pert_rsds:DataArray,
+    kern:str = 'GFDL',
+    sky:str = 'all-sky'
+) -> DataArray:
     """
     Calculate the radiative perturbation (W/m^2) from changes in surface
     albedo using user-specified radiative kernel. Horizontal resolution
