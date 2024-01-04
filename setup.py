@@ -34,6 +34,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     extras_require = {
-        'tests': ["pytest"]
+        'tests': ["pytest"],
+        'lint': ['precommit>=2.20.0']
     }
 )
