@@ -12,3 +12,11 @@ def test_calc_T_feedbacks() -> None:
     Planck_val = (spat_avg(Planck)/dTS_glob_avg).mean()
     xr.testing.assert_allclose(LR_val,xr.DataArray(-0.41),atol=0.01)
     xr.testing.assert_allclose(Planck_val,xr.DataArray(-3.12),atol=0.01)
+
+def test_albedo_feedbacks() -> None:
+    alb = calc_alb_feedback(ctrl.FSUS,ctrl.FSDS,
+                           pert.FSUS,pert.FSDS,
+                           kern="GFDL")
+    dTS_glob_avg = spat_avg(pert.TS - ctrl.TS)
+    val_to_test = (spat_avg(alb)/dTS_glob_avg).mean()
+    xr.testing.assert_allclose(val_to_test,xr.DataArray(0.38),atom=0.01)
