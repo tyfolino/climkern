@@ -1,6 +1,36 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools","wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "climkern"
+authors = [
+    {name = "Ty Janoski", email="tjanoski@ccny.cuny.edu"},
+]
+requires-python = ">= 3.9"
+version = "1.0.1"
+dependencies = [
+    "xarray>=0.16.2",
+    "cf-xarray>=0.5.1",
+    "cftime",
+    "xesmf>=0.7.1",
+    "esmpy@git+https://github.com/esmf-org/esmf#subdirectory=src/addon/esmpy",
+    "importlib_resources",
+    "pooch",
+    "tqdm",
+    "plac",
+    "netCDF4",
+]
+readme="README.md"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7,<8",
+]
+
+lint = [
+    "precommit>=2.20.0"
+]
 
 # https://github.com/charliermarsh/ruff
 [tool.ruff]
