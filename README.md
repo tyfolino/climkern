@@ -139,4 +139,4 @@ ClimKern has several other useful features:
 We are continuously updating the package and are working on improved documentation. For now, we recommend exploring the other functions by referencing the package with a "?" in a Jupyter notebook.
 
 ## Want to help? Get involved!
-Our hope is that this package will be useful to the climate science community and we appreciate any contributions our fellow scientists and programmers can offer. All forks and pull requests should go through the "dev" channel (not the "main"). For more information and to get involved, email Ty at <tjanoski@ccny.cuny.edu>. 
+Our hope is that this package will be useful to the climate science community and we appreciate any contributions our fellow scientists and programmers can offer. For more information and to get involved, email Ty at <tjanoski@ccny.cuny.edu>. 
