@@ -1,0 +1,5 @@
+=======
+climkern
+=======
+
+.. automodule:: climkern.frontend
