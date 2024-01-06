@@ -14,7 +14,7 @@ release = '1.0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'myst_parser']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon']
 
 autodoc_default_options = {'members': True}
 autoclass_content = 'class'
