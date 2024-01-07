@@ -10,8 +10,6 @@ Welcome to ClimKern's documentation!
    :maxdepth: 1
    :caption: Contents:
 
-   climkern
-
 
 
 Indices and tables
