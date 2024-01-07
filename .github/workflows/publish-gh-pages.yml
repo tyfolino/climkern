@@ -14,4 +14,5 @@ jobs:
     steps:
     - id: deployment
       uses: sphinx-notes/pages@v3
-      documentation_path: ./docs/source
+      with:
+        documentation_path: ./docs/source
