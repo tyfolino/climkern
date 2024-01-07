@@ -1,13 +1,13 @@
-.. ClimKern documentation master file, created by
-   sphinx-quickstart on Sun Jan  7 12:37:11 2024.
+.. climkern documentation master file, created by
+   sphinx-quickstart on Sun Jan  7 17:42:43 2024.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ClimKern's documentation!
+Welcome to climkern's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Contents:
 
 
