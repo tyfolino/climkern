@@ -22,8 +22,8 @@ jobs:
           micromamba-version: 'latest'
           environment-file: ci/environment.yml
       - name: Install editable climkern
-          run: |
-            python -m pip install --no-deps -e .
+        run: |
+          python -m pip install --no-deps -e .
       - id: deployment
         uses: sphinx-notes/pages@v3
         with:
