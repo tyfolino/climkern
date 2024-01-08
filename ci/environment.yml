@@ -1,0 +1,13 @@
+name: climkern
+channels:
+  - conda-forge
+dependencies:
+  - esmpy
+  - xarray
+  - xesmf
+  - cftime
+  - pooch
+  - tqdm
+  - importlib-resources
+  - plac
+  - netcdf4
