@@ -11,8 +11,13 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
     - id: deployment
-      uses: sphinx-notes/pages@v3
-      with:
-        documentation_path: ./docs/source
+    run: |
+      conda install esmpy -c conda-forge
+    uses: sphinx-notes/pages@v3
+    with:
+      documentation_path: ./docs/source
