@@ -15,9 +15,10 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
+    - id: conda-setup
+      run: |
+        conda install esmpy -c conda-forge
     - id: deployment
-    run: |
-      conda install esmpy -c conda-forge
-    uses: sphinx-notes/pages@v3
-    with:
-      documentation_path: ./docs/source
+      uses: sphinx-notes/pages@v3
+      with:
+        documentation_path: ./docs/source
