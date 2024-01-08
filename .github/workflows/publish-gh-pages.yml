@@ -15,10 +15,15 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
-    - id: conda-setup
-      run: |
-        conda install esmpy -c conda-forge
-    - id: deployment
-      uses: sphinx-notes/pages@v3
-      with:
-        documentation_path: ./docs/source
+      - name: setup conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+      - id: esmpy-install
+        run: |
+          conda install esmpy -c conda-forge
+      - id: deployment
+        uses: sphinx-notes/pages@v3
+        with:
+          documentation_path: ./docs/source
