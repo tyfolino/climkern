@@ -953,7 +953,7 @@ def calc_strato_q(
 
     # check tropopause units if provided by user, else create dummy tropopause
     if type(pert_trop) == type(None):
-        pert_trop = make_tropo(ctrl_ps)
+        pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
         pert_trop = check_pres_units(pert_trop, "pert tropopause")
