@@ -1,5 +1,6 @@
 from . import util
 from .frontend import (
+    calc_alb_feedback,
     calc_cloud_LW,
     calc_cloud_LW_res,
     calc_cloud_SW,
