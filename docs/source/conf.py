@@ -21,6 +21,17 @@ autoclass_content = 'class'
 napoleon_numpy_docstring = True
 napoleon_google_docstring = False
 
+autodoc_mock_imports = [
+    "xarray",
+    "cf-xarray",
+    "cftime",
+    "xesmf",
+    "importlib_resources",
+    "pooch",
+    "tqdm",
+    "plac",
+    "netCDF4",
+]
 
 
 # -- Options for HTML output -------------------------------------------------
