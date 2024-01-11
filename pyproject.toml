@@ -14,7 +14,6 @@ dependencies = [
     "cf-xarray>=0.5.1",
     "cftime",
     "xesmf>=0.7.1",
-    "esmpy@git+https://github.com/esmf-org/esmf#subdirectory=src/addon/esmpy",
     "importlib_resources",
     "pooch",
     "tqdm",
