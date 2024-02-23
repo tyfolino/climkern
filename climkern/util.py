@@ -165,7 +165,7 @@ def check_plev(kern):
 
 
 def __calc_qs__(temp):
-    """Calculate either the saturated specific humidity
+    """Calculate the saturated specific humidity
     given temperature and pressure.
     """
     if temp.plev.units == "Pa":
