@@ -21,3 +21,12 @@ def test_albedo_feedbacks(
     alb = calc_alb_feedback(ctrl.FSUS, ctrl.FSDS, pert.FSUS, pert.FSDS, kern="GFDL")
     val_to_test = (spat_avg(alb) / dTS_glob_avg).mean()
     xr.testing.assert_allclose(val_to_test, xr.DataArray(0.38), atol=0.01)
+
+def test_calc_q_feedbacks(
+        ctrl: xr.Dataset, pert: xr.Dataset, dTS_glob_avg: xr.DataArray
+) -> None:
+    lw,sw = calc_q_feedbacks(
+        ctrl.Q,ctrl.T,ctrl.PS,pert.Q,pert.PS,pert.TROP_P,kern="GFDL",method="zelinka"
+    )
+    q_val = (spat_avg(lw + sw) / dTS_glob_avg).mean()
+    xr.testing.assert_allclose(q_val,xr.DataArray(1.44), atol=0.01)

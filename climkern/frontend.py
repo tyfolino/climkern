@@ -432,12 +432,12 @@ def calc_q_feedbacks(
     # calculate feedbacks
     qlw_feedback = (qlw_kernel / norm * diff_q * conv_factor * dp / 10000).sum(
         dim="plev", min_count=1
-    )
+    ).drop_vars("units")
     qsw_feedback = (
         (qsw_kernel / norm * diff_q * conv_factor * dp / 10000)
         .sum(dim="plev", min_count=1)
         .fillna(0)
-    )
+    ).drop_vars("units")
 
     # one complication: CloudSat needs to be masked so we don't fill the NaNs
     # with zeros
