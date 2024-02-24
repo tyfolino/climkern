@@ -31,6 +31,11 @@ lint = [
     "precommit>=2.20.0"
 ]
 
+# tools
+[tool.black]
+line-length = 88
+target-version = ["py39","py310", "py311", "py312"]
+
 # https://github.com/charliermarsh/ruff
 [tool.ruff]
 line-length = 88
