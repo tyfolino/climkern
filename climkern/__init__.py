@@ -17,7 +17,7 @@ from .frontend import (
 )
 
 __all__ = [
-    "calc_alb_feedbacks",
+    "calc_alb_feedback",
     "calc_T_feedbacks",
     "calc_q_feedbacks",
     "calc_dCRE_SW",
