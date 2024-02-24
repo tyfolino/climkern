@@ -76,8 +76,9 @@ def check_var_units(da, var):
 
 
 def make_tropo(da):
-    """Use the a DataArray containing model lat and lon to make a makeshift 
-    tropopause."""
+    """Use the a DataArray containing model lat and lon to make a makeshift
+    tropopause.
+    """
     tropo = (3e4 - 2e4 * np.cos(np.deg2rad(da.lat))).broadcast_like(da)
     return tropo
 
