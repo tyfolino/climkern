@@ -14,7 +14,7 @@ def download():
 
     retrieve(
         url="doi:10.5281/zenodo.10223376/data.zip",
-        known_hash="md5:8718deb9ed358dde36f3a9c1fd8a46c4",
+        known_hash=None,
         fname=fname,
         path=path,
         processor=Unzip(extract_dir="data"),
