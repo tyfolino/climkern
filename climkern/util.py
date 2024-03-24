@@ -132,15 +132,14 @@ def get_kern(name, loc="TOA"):
 
 def make_clim(da):
     "Produce monthly climatology of model field."
-    # da = _check_time(da)
     try:
         clim = (
             da.groupby(da.time.dt.month)
             .mean(dim="time", skipna=True)
             .rename({"month": "time"})
         )
-    except TypeError:
-        # TypeError if time is not datetime object
+    except AttributeError:
+        # AttributeError if time is not datetime object
         clim = da
     return clim
 
@@ -150,8 +149,6 @@ def get_albedo(SWup, SWdown):
     downward sfc shortwave.
     """
     # avoid dividing by 0 and assign 0 to those grid boxes
-    # SWup = _check_time(SWup)
-    # SWdown = _check_time(SWdown)
     return (SWup / SWdown.where(SWdown > 0)).fillna(0)
 
 
