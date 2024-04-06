@@ -19,7 +19,6 @@ dependencies = [
     "tqdm",
     "plac",
     "netCDF4",
-    "esmpy",
 ]
 readme="README.md"
 

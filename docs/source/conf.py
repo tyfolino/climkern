@@ -31,7 +31,6 @@ autodoc_mock_imports = [
     "tqdm",
     "plac",
     "netCDF4",
-    "esmpy"
 ]
 
 
