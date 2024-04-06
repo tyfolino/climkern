@@ -5,7 +5,7 @@
 ## Citation
 If you use this package or any part of this code, please cite it! Until we have a paper prepared, please cite this package at software.
 
-Janoski, T. P., & Mitevski, I. (2023, December 7). ClimKern (Version 1.0.0). Retrieved from https://pypi.org/project/climkern/1.0.0/. <https://doi.org/10.5281/zenodo.10291284>.
+Janoski, T. P., & Mitevski, I. (2024, April 6). ClimKern (Version 1.1.0). Retrieved from https://pypi.org/project/climkern/1.1.0/. <https://doi.org/10.5281/zenodo.10291284>.
 
 ## Overview
 
@@ -16,27 +16,47 @@ ClimKern
 * simplifies the calculations by giving users access to functions tailored for climate model output
 * provides access to a repository of **12 different radiative kernels** to quantify interkernel spread
 
+The below information is meant to be a quickstart guide, but all functions and capabilities can be found at ClimKern's [documentation site](https://tyfolino.github.io/climkern/).
+
 ## Installation
 
-ClimKern is built on the architecture of Xarray and requires several other packages for compatibility with climate model output. The easiest method to install is to create a new conda environment with prerequisite packages using [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) or [mamba](https://mamba-framework.readthedocs.io/en/latest/installation_guide.html):  
-`conda create -n ck_env python=3.9 esmpy xarray xesmf cftime pooch tqdm importlib-resources plac netcdf4 -c conda-forge`  
-or  
-`mamba create -n ck_env python=3.9 esmpy xarray xesmf cftime pooch tqdm importlib-resources plac netcdf4 -c conda-forge` 
-<br></br>Then, activate the environment:  
-`conda activate ck_env`  
-or  
-`mamba activate ck_env` 
-<br></br>
-Finally, install ClimKern with [pip](https://pip.pypa.io/en/stable/#):  
-`pip install -i https://test.pypi.org/simple/ climkern`
-<br></br>
-Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10223376). These kernels (and tutorial data) are stored separately because of PyPI size limitations. You can download the kernels easily using the download script included in the package.  
+ClimKern is built on the Xarray architecture and requires several other packages for
+regridding and climate model output compatibility. The easiest method is to create a
+new conda environment using [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) or [mamba](https://mamba-framework.readthedocs.io/en/latest/installation_guide.html):
+
+`conda create -n ck_env python=3.10 esmpy -c conda-forge`
+
+A conda environment is necessary because [ESMPy](https://earthsystemmodeling.org/esmpy/), which is required for regridding kernels, is unavailable via `pip`.
+
+Next, activate the new environment:
+
+`conda activate ck_env`
+
+Finally, install ClimKern with [pip](https://pip.pypa.io/en/stable/#):
+
+`pip install climkern`
+
+Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10223376). These kernels (and tutorial data) are stored separately because of PyPI size limitations. You can download the kernels easily using the download script included in the package:  
+
 `python -m climkern download`
+
+Note: The kernels & tutorial data are approximately 5.5 GB.
+
+<i>Optional</i>:
+
+You can test your installation via pytest.
+
+```
+pip install pytest
+pytest -v --pyargs climkern
+```
+
+All three tests should pass.
 
 ## Basic tutorial
 ### Temperature, water vapor, and surface albedo feedbacks
 
-This brief tutorial will cover the basics of using ClimKern before more complete documentation can be written (I'm only one person, here!). We start by importing ClimKern and accessing our tutorial data:
+This brief tutorial will cover the basics of using ClimKern. Please check the [documentation](https://tyfolino.github.io/climkern/) for a more complete list of available functions. We start by importing ClimKern and accessing our tutorial data:
 ```python
 import climkern as ck
 
@@ -130,13 +150,22 @@ Expected result:
 >
 >`The global average LW cloud feedback is 0.02 W/m^2/K.`
 
+## Troubleshooting
+
+If you are having issues downloading dependencies with `pip`, you can also try adding them to your conda environment with `conda`, i.e.:
+
+`conda install xesmf -c conda-forge`
+
+If you are having trouble downloading the  kernels and tutorial data using the package's download function, you can also download the data directly from the [Zenodo repository](https://zenodo.org/doi/10.5281/zenodo.10223376) and put it in the climkern/data directory located wherever your conda/mamba environments are stored.
+
 ## Other features & coming soon
 ClimKern has several other useful features:
 - Four different methods for calculating water vapor feedbacks.
 - The ability to calculate the "relative humidity" version of all feedbacks following [Held & Shell (2012)](https://journals.ametsoc.org/view/journals/clim/25/8/jcli-d-11-00721.1.xml) and [Zelinka et al. (2020)](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2019GL085782).
 - Functions to calculate stratospheric temperature and water vapor feedbacks.
 
-We are continuously updating the package and are working on improved documentation. For now, we recommend exploring the other functions by referencing the package with a "?" in a Jupyter notebook.
+We are continuously updating the package. Please check out the [GitHub issues page](https://github.com/tyfolino/climkern/issues) for this repository for plans for new features.
 
 ## Want to help? Get involved!
-Our hope is that this package will be useful to the climate science community and we appreciate any contributions our fellow scientists and programmers can offer. All forks and pull requests should go through the "dev" channel (not the "main"). For more information and to get involved, email Ty at <tjanoski@ccny.cuny.edu>. 
+
+We deeply appreciate contributions from other scientists and programmers and are happy to attribute credit accordingly. If you wish to contribute, please create a fork or branch from the `dev` channel (<b>not</b> `main`) and submit a pull request when you are done with your changes.
