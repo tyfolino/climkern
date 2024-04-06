@@ -69,10 +69,13 @@ def check_var_units(da,var):
     else:
         return(da)
 
-def make_tropo(PS):
-    """Use the surface pressure DataArray to make a makeshift tropopause."""
-    tropo = (3e4 - 2e4*np.cos(np.deg2rad(PS.lat))).broadcast_like(PS)
-    return(tropo)
+def make_tropo(da):
+    """Use the a DataArray containing model lat and lon to make a makeshift
+    tropopause.
+    """
+    tropo = (3e4 - 2e4 * np.cos(np.deg2rad(da.lat))).broadcast_like(da)
+    return tropo
+
 
 def check_plev_units(da):
     if('units' not in da.plev.attrs):
@@ -121,13 +124,14 @@ def get_kern(name,loc='TOA'):
 
 def make_clim(da):
     "Produce monthly climatology of model field."
-    # da = _check_time(da)
     try:
-        clim = da.groupby(da.time.dt.month).mean(
-            dim='time',skipna=True).rename(
-            {'month':'time'})
-    except(TypeError):
-        # TypeError if time is not datetime object
+        clim = (
+            da.groupby(da.time.dt.month)
+            .mean(dim="time", skipna=True)
+            .rename({"month": "time"})
+        )
+    except AttributeError:
+        # AttributeError if time is not datetime object
         clim = da
     return clim
 
@@ -135,9 +139,8 @@ def get_albedo(SWup,SWdown):
     """Calculate the surface albedo as the ratio of upward to
     downward sfc shortwave."""
     # avoid dividing by 0 and assign 0 to those grid boxes
-    # SWup = _check_time(SWup)
-    # SWdown = _check_time(SWdown)
-    return (SWup/SWdown.where(SWdown>0)).fillna(0)
+    return (SWup / SWdown.where(SWdown > 0)).fillna(0)
+
 
 def check_plev(kern):
     """Make sure the vertical pressure units of the kernel are in Pa."""
@@ -149,11 +152,12 @@ def check_plev(kern):
     return(kern)
 
 def __calc_qs__(temp):
-    """Calculate either the saturated specific humidity
-    given temperature and pressure."""
-    if(temp.plev.units=='Pa'):
-        pres = temp.plev/100
-    elif(temp.plev.units in ['hPa','millibars']):
+    """Calculate the saturated specific humidity
+    given temperature and pressure.
+    """
+    if temp.plev.units == "Pa":
+        pres = temp.plev / 100
+    elif temp.plev.units in ["hPa", "millibars"]:
         pres = temp.plev
     else:
         warnings.warn('Cannot determine units of pressure \

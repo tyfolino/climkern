@@ -8,3 +8,6 @@ climkern/climkern.egg-info/
 climkern/data/
 dist/
 *.nc
+.venv/
+climkern/__init__.pyc
+climkern/util.pyc

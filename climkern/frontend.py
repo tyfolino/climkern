@@ -393,10 +393,14 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
     dp = get_dp(diff_q,pert_ps,pert_trop,layer='troposphere')
                     
     # calculate feedbacks
-    qlw_feedback = (qlw_kernel/norm * diff_q * conv_factor * dp/10000).sum(
-        dim='plev',min_count=1)
-    qsw_feedback = (qsw_kernel/norm * diff_q * conv_factor * dp/10000).sum(
-        dim='plev',min_count=1).fillna(0)
+    qlw_feedback = (qlw_kernel / norm * diff_q * conv_factor * dp / 10000).sum(
+        dim="plev", min_count=1
+    ).drop_vars("units")
+    qsw_feedback = (
+        (qsw_kernel / norm * diff_q * conv_factor * dp / 10000)
+        .sum(dim="plev", min_count=1)
+        .fillna(0)
+    ).drop_vars("units")
 
     # one complication: CloudSat needs to be masked so we don't fill the NaNs
     # with zeros
@@ -888,8 +892,8 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
     pert_ps = check_pres_units(pert_ps,"pert PS")
 
     # check tropopause units if provided by user, else create dummy tropopause
-    if(type(pert_trop) == type(None)):
-        pert_trop = make_tropo(ctrl_ps)
+    if type(pert_trop) == type(None):
+        pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
         pert_trop = check_pres_units(pert_trop,"pert tropopause")
@@ -1174,4 +1178,4 @@ def spat_avg(data,lat_bound_s=-90,lat_bound_n=90):
     avg = (data * weights).sum(dim='lat')
 
     # return avg
-    return(avg)
+    return avg
