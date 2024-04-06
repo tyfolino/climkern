@@ -1,11 +1,8 @@
 # import statements
 
-import os
-
+import climkern as ck # if this doesn't work, it's probably the wrong env
 from pooch import Unzip, retrieve
-
-import climkern as ck  # if this doesn't work, it's probably the wrong env
-
+import os
 
 def download():
     # get path of climkern package
@@ -17,9 +14,9 @@ def download():
         known_hash=None,
         fname=fname,
         path=path,
-        processor=Unzip(extract_dir="data"),
-        progressbar=True,
+        processor=Unzip(extract_dir='data'),
+        progressbar=True
     )
-
+    
     # delete the zip file after unzipping
-    os.remove(path + "/data.zip")
+    os.remove(path+'/data.zip')
