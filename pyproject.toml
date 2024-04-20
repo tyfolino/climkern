@@ -8,7 +8,7 @@ authors = [
     {name = "Ty Janoski", email="tyfolino@gmail.com"},
 ]
 requires-python = ">= 3.9"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
     "xarray>=0.16.2",
     "cf-xarray>=0.5.1",
