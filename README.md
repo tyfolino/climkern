@@ -90,7 +90,7 @@ The water vapor and surface albedo feedbacks are calculated similarly:
 ```python
 q_lw,q_sw = ck.calc_q_feedbacks(ctrl.Q,ctrl.T,ctrl.PS,
                                 pert.Q,pert.PS,pert.TROP_P,
-                                kern="GFDL",method="zelinka")
+                                kern="GFDL",method=3)
 alb = ck.calc_alb_feedback(ctrl.FSUS,ctrl.FSDS,
                            pert.FSUS,pert.FSDS,
                            kern="GFDL")
