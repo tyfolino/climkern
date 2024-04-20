@@ -212,7 +212,7 @@ def calc_q_norm(ctrl_ta,ctrl_q,method):
     ta1K.attrs = ctrl_ta.attrs
     qs1K = __calc_qs__(ta1K)
 
-    if(method=='linear'):
+    if(method==4):
         # get the new specific humidity using the same RH
         q1K = qs1K * RH
         q1K['units'] = 'kg/kg'
@@ -221,14 +221,14 @@ def calc_q_norm(ctrl_ta,ctrl_q,method):
         dq1K = 1000 * (q1K - ctrl_q)
         return(dq1K)
         
-    elif(method in ['pendergrass','kramer']):
+    elif(method in [1,2]):
         dqsdT = qs1K - qs0
         dqdT = RH * dqsdT
 
         dlogqdT = 1000 * (dqdT / ctrl_q)
         return(dlogqdT)
         
-    elif(method=='zelinka'):
+    elif(method==3):
         dlogqdT = 1000 * (np.log(qs1K.where(qs1K>0)) - np.log(
             qs0.where(qs0>0)))
         return(dlogqdT)
@@ -251,8 +251,8 @@ def check_coords(ds,ndim=3):
         ds = ds.rename({'month':'time'})
     else:
         raise AttributeError(
-            'There is no \'time\' or \'month\' dimension in\
-        one of the input DataArrays. Please rename your time dimension(s).')
+            "There is no \'time\' or \'month\' dimension in"+
+            "one of the input DataArrays. Please rename your time dimension(s).")
 
     # lat and lon
     if('lat' not in ds.dims and 'latitude' not in ds.dims):

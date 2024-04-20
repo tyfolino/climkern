@@ -138,8 +138,8 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
         DataArray containing tropopause pressure in the perturbed simulation.
         3D with coordinates of time, latitude, and longitude and units of Pa
         or hPa. If not provided, ClimKern will assume a tropopause height of
-        300 hPa at the equator, linearly decreasing with the cosine of
-        latitude to 100 hPa at the poles.
+        100 hPa at the equator, linearly descending with the cosine of
+        latitude to 300 hPa at the poles.
 
     kern : string, optional
         String specifying the name of the desired kernel. Defaults to "GFDL".
@@ -245,7 +245,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
 
 
 def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
-                     kern='GFDL',sky='all-sky',method='pendergrass'):
+                     kern='GFDL',sky='all-sky',method=1):
     """
     Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA from 
     changes in specific humidity using user-specified kernel. Horizontal
@@ -282,8 +282,8 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
         DataArray containing tropopause pressure in the perturbed simulation.
         3D with coordinates of time, latitude, and longitude and units of Pa
         or hPa. If not provided, ClimKern will assume a tropopause height of
-        300 hPa at the equator, linearly decreasing with the cosine of
-        latitude to 100 hPa at the poles.
+        100 hPa at the equator, linearly descending with the cosine of
+        latitude to 300 hPa at the poles.
 
     kern : string, optional
         String specifying the name of the desired kernel. Defaults to "GFDL".
@@ -292,10 +292,16 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
-    method : string, optional
+    method : int, optional
         Specifies the method to use to calculate the specific humidity
-        feedback. Options are "pendergrass" (default), "kramer", "zelinka",
-        and "linear". 
+        feedback. Options 1, 2, and 3 use the change in the natural logarithm of
+        specific humidity, while 4 uses the lienar change. The options are:
+        1 -- Uses the fractional change approximation of logarithms in the specific
+        humidity response & normalization factor.
+        2 -- Uses the fractional change approximation of logarithms in the 
+        normalization factor.
+        3 -- Does not use the fractional change approximation.
+        4 -- Uses the linear change in specific humidity.
 
     Returns
     -------
@@ -309,6 +315,13 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
         changes in specific humidity with coordinates of time, latitude,
         and longitude.
     """
+    # Issue warning if user provides old keywords for the method argument
+    if method in ["pendergrass","kramer","zelinka","linear"]:
+        warnings.warn("Name keywords are deprecated and will be removed"+
+                      " from future versions of ClimKern. Please use \"1\", "+
+                      "\"2\", \"3\", or \"4\" instead.",FutureWarning)
+        mapping = {"pendergrass":1,"kramer":2,"zelinka":3,"linear":4}
+        method = mapping[method]
     # get correct keys for all-sky or clear-sky
     qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
     qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
@@ -354,11 +367,11 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
     ctrl_q_clim_tiled = tile_data(ctrl_q_clim,pert_q)
 
     # calculate specific humidity response using user-specified method
-    if(method=='pendergrass'):
+    if(method==1):
         diff_q = (pert_q - ctrl_q_clim_tiled)/ctrl_q_clim_tiled
-    elif(method=='linear'):
+    elif(method==4):
         diff_q = pert_q - ctrl_q_clim_tiled
-    elif(method in ['kramer','zelinka']):
+    elif(method in [2,3]):
         diff_q = np.log(pert_q.where(pert_q>0)) - np.log(
             ctrl_q_clim_tiled.where(ctrl_q_clim_tiled>0))
     else:
@@ -752,8 +765,8 @@ def calc_strato_T(ctrl_ta,pert_ta,pert_ps,pert_trop=None,kern='GFDL',
         DataArray containing tropopause pressure in the perturbed simulation.
         3D with coordinates of time, latitude, and longitude and units of Pa
         or hPa. If not provided, ClimKern will assume a tropopause height of
-        300 hPa at the equator, linearly decreasing with the cosine of
-        latitude to 100 hPa at the poles.
+        100 hPa at the equator, linearly descending with the cosine of
+        latitude to 300 hPa at the poles.
 
     kern : string, optional
         String specifying the name of the desired kernel. Defaults to "GFDL".
@@ -816,7 +829,7 @@ def calc_strato_T(ctrl_ta,pert_ta,pert_ps,pert_trop=None,kern='GFDL',
     return(T_feedback)
 
 def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
-                     kern='GFDL',sky='all-sky',method='pendergrass'):
+                     kern='GFDL',sky='all-sky',method=1):
     """
     Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA from 
     changes in stratospheric specific humidity using user-specified kernel.
@@ -848,8 +861,8 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
         DataArray containing tropopause pressure in the perturbed simulation.
         3D with coordinates of time, latitude, and longitude and units of Pa
         or hPa. If not provided, ClimKern will assume a tropopause height of
-        300 hPa at the equator, linearly decreasing with the cosine of
-        latitude to 100 hPa at the poles.
+        100 hPa at the equator, linearly descending with the cosine of
+        latitude to 300 hPa at the poles.
 
     kern : string, optional
         String specifying the name of the desired kernel. Defaults to "GFDL".
@@ -858,10 +871,16 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
-    method : string, optional
+    method : int, optional
         Specifies the method to use to calculate the specific humidity
-        feedback. Options are "pendergrass" (default), "kramer", "zelinka",
-        and "linear". 
+        feedback. Options 1, 2, and 3 use the change in the natural logarithm of
+        specific humidity, while 4 uses the lienar change. The options are:
+        1 -- Uses the fractional change approximation of logarithms in the specific
+        humidity response & normalization factor.
+        2 -- Uses the fractional change approximation of logarithms in the 
+        normalization factor.
+        3 -- Does not use the fractional change approximation.
+        4 -- Uses the linear change in specific humidity.
 
     Returns
     -------
@@ -875,6 +894,14 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
         perturbations from changes in specific humidity in the stratosphere
         (shortwave). Has coordinates of time, lat, and lon.
     """
+    # Issue warning if user provides old keywords for the method argument
+    if method in ["pendergrass","kramer","zelinka","linear"]:
+        warnings.warn("Name keywords are deprecated and will be removed"+
+                      " from future versions of ClimKern. Please use \"1\", "+
+                      "\"2\", \"3\", or \"4\" instead.",FutureWarning)
+        mapping = {"pendergrass":1,"kramer":2,"zelinka":3,"linear":4}
+        method = mapping[method]
+
     # get correct keys for all-sky or clear-sky
     qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
     qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
@@ -915,11 +942,11 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
     # tile control climatology to match length of pert simulation time dim
     ctrl_q_clim_tiled = tile_data(ctrl_q_clim,pert_q)
     
-    if(method=='pendergrass'):
+    if(method==1):
         diff_q = (pert_q - ctrl_q_clim_tiled)/ctrl_q_clim_tiled
-    elif(method=='linear'):
+    elif(method==4):
         diff_q = pert_q - ctrl_q_clim_tiled
-    elif(method in ['kramer','zelinka']):
+    elif(method in [2,3]):
         diff_q = np.log(pert_q) - np.log(ctrl_q_clim_tiled)
     else:
         raise ValueError(
@@ -966,7 +993,7 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
 
 def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
                      pert_trop=None,kern='GFDL',sky='all-sky',
-                     method='pendergrass'):
+                     method=1):
     """
     Calculate the TOA radiative perturbations from changes in relative
     humidity following Held & Shell (2012). Horizontal resolution is 
@@ -1003,8 +1030,8 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
         DataArray containing tropopause pressure in the perturbed simulation.
         3D with coordinates of time, latitude, and longitude and units of Pa
         or hPa. If not provided, ClimKern will assume a tropopause height of
-        300 hPa at the equator, linearly decreasing with the cosine of
-        latitude to 100 hPa at the poles.
+        100 hPa at the equator, linearly descending with the cosine of
+        latitude to 300 hPa at the poles.
 
     kern : string, optional
         String specifying the name of the desired kernel. Defaults to "GFDL".
@@ -1013,10 +1040,16 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
-    method : string, optional
+    method : int, optional
         Specifies the method to use to calculate the specific humidity
-        feedback. Options are "pendergrass" (default), "kramer", "zelinka",
-        and "linear". 
+        feedback. Options 1, 2, and 3 use the change in the natural logarithm of
+        specific humidity, while 4 uses the lienar change. The options are:
+        1 -- Uses the fractional change approximation of logarithms in the specific
+        humidity response & normalization factor.
+        2 -- Uses the fractional change approximation of logarithms in the 
+        normalization factor.
+        3 -- Does not use the fractional change approximation.
+        4 -- Uses the linear change in specific humidity.
 
     Returns
     -------
@@ -1025,6 +1058,14 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
         perturbations from changes in relative humidity (LW+SW).
         Has coordinates of time, lat, and lon.
     """
+    # Issue warning if user provides old keywords for the method argument
+    if method in ["pendergrass","kramer","zelinka","linear"]:
+        warnings.warn("Name keywords are deprecated and will be removed"+
+                      " from future versions of ClimKern. Please use \"1\", "+
+                      "\"2\", \"3\", or \"4\" instead.",FutureWarning)
+        mapping = {"pendergrass":1,"kramer":2,"zelinka":3,"linear":4}
+        method = mapping[method]
+
     # get correct keys for all-sky or clear-sky
     qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
     qsw_key = 'sw_q' if sky=='all-sky' else 'swclr_q'
@@ -1070,11 +1111,11 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
     # tile control climatology to match length of pert simulation time dim
     ctrl_q_clim_tiled = tile_data(ctrl_q_clim,pert_q)
     
-    if(method=='pendergrass'):
+    if(method==1):
         diff_q = (pert_q - ctrl_q_clim_tiled)/ctrl_q_clim_tiled
-    elif(method=='linear'):
+    elif(method==4):
         diff_q = pert_q - ctrl_q_clim_tiled
-    elif(method in ['kramer','zelinka']):
+    elif(method in [2,3]):
         diff_q = np.log(pert_q) - np.log(ctrl_q_clim_tiled)
     else:
         raise ValueError(
