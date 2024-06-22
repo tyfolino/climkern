@@ -190,7 +190,7 @@ def calc_T_feedbacks(ctrl_ta,ctrl_ts,ctrl_ps,pert_ta,pert_ts,pert_ps,
 
     # check tropopause units if provided by user, else create dummy tropopause
     if(type(pert_trop) == type(None)):
-        pert_trop = make_tropo(ctrl_ps)
+        pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
         pert_trop = check_pres_units(pert_trop,"pert tropopause")
@@ -341,7 +341,7 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
 
     # check tropopause units if provided by user, else create dummy tropopause
     if(type(pert_trop) == type(None)):
-        pert_trop = make_tropo(ctrl_ps)
+        pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
         pert_trop = check_pres_units(pert_trop,"pert tropopause")
@@ -1086,7 +1086,7 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
 
     # check tropopause units if provided by user, else create dummy tropopause
     if(type(pert_trop) == type(None)):
-        pert_trop = make_tropo(ctrl_ps)
+        pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
         pert_trop = check_pres_units(pert_trop,"pert tropopause")
