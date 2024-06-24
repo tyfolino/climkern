@@ -295,7 +295,7 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
     method : int, optional
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
-        specific humidity, while 4 uses the lienar change. The options are:
+        specific humidity, while 4 uses the linear change. The options are:
         1 -- Uses the fractional change approximation of logarithms in the specific
         humidity response & normalization factor.
         2 -- Uses the fractional change approximation of logarithms in the 
@@ -874,7 +874,7 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
     method : int, optional
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
-        specific humidity, while 4 uses the lienar change. The options are:
+        specific humidity, while 4 uses the linear change. The options are:
         1 -- Uses the fractional change approximation of logarithms in the specific
         humidity response & normalization factor.
         2 -- Uses the fractional change approximation of logarithms in the 
@@ -1043,7 +1043,7 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
     method : int, optional
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
-        specific humidity, while 4 uses the lienar change. The options are:
+        specific humidity, while 4 uses the linear change. The options are:
         1 -- Uses the fractional change approximation of logarithms in the specific
         humidity response & normalization factor.
         2 -- Uses the fractional change approximation of logarithms in the 
