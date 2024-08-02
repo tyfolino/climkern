@@ -296,12 +296,14 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
         specific humidity, while 4 uses the linear change. The options are:
-        1 -- Uses the fractional change approximation of logarithms in the specific
+        1 -- Uses the actual logarithm for both the specific humidity response
+        and the normalization factor.
+        2 -- Uses the fractional change approximation of logarithms only in the 
+        normalization factor, with the actual logarithm used in the specific humidity 
+        response.
+        3 -- Uses the fractional change approximation of logarithms in the specific 
         humidity response & normalization factor.
-        2 -- Uses the fractional change approximation of logarithms in the 
-        normalization factor.
-        3 -- Does not use the fractional change approximation.
-        4 -- Uses the linear change in specific humidity.
+        4 -- Uses the linear change in specific humidity for both.
 
     Returns
     -------
@@ -320,7 +322,7 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
         warnings.warn("Name keywords are deprecated and will be removed"+
                       " from future versions of ClimKern. Please use \"1\", "+
                       "\"2\", \"3\", or \"4\" instead.",FutureWarning)
-        mapping = {"pendergrass":1,"kramer":2,"zelinka":3,"linear":4}
+        mapping = {"pendergrass":3,"kramer":2,"zelinka":1,"linear":4}
         method = mapping[method]
     # get correct keys for all-sky or clear-sky
     qlw_key = 'lw_q' if check_sky(sky)=='all-sky' else 'lwclr_q'
@@ -367,11 +369,11 @@ def calc_q_feedbacks(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ps,pert_trop=None,
     ctrl_q_clim_tiled = tile_data(ctrl_q_clim,pert_q)
 
     # calculate specific humidity response using user-specified method
-    if(method==1):
+    if(method==3):
         diff_q = (pert_q - ctrl_q_clim_tiled)/ctrl_q_clim_tiled
     elif(method==4):
         diff_q = pert_q - ctrl_q_clim_tiled
-    elif(method in [2,3]):
+    elif(method in [2,1]):
         diff_q = np.log(pert_q.where(pert_q>0)) - np.log(
             ctrl_q_clim_tiled.where(ctrl_q_clim_tiled>0))
     else:
@@ -875,12 +877,14 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
         specific humidity, while 4 uses the linear change. The options are:
-        1 -- Uses the fractional change approximation of logarithms in the specific
+        1 -- Uses the actual logarithm for both the specific humidity response
+        and the normalization factor.
+        2 -- Uses the fractional change approximation of logarithms only in the 
+        normalization factor, with the actual logarithm used in the specific humidity 
+        response.
+        3 -- Uses the fractional change approximation of logarithms in the specific 
         humidity response & normalization factor.
-        2 -- Uses the fractional change approximation of logarithms in the 
-        normalization factor.
-        3 -- Does not use the fractional change approximation.
-        4 -- Uses the linear change in specific humidity.
+        4 -- Uses the linear change in specific humidity for both.
 
     Returns
     -------
@@ -899,7 +903,7 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
         warnings.warn("Name keywords are deprecated and will be removed"+
                       " from future versions of ClimKern. Please use \"1\", "+
                       "\"2\", \"3\", or \"4\" instead.",FutureWarning)
-        mapping = {"pendergrass":1,"kramer":2,"zelinka":3,"linear":4}
+        mapping = {"pendergrass":3,"kramer":2,"zelinka":1,"linear":4}
         method = mapping[method]
 
     # get correct keys for all-sky or clear-sky
@@ -942,11 +946,11 @@ def calc_strato_q(ctrl_q,ctrl_ta,pert_q,pert_ps,pert_trop=None,
     # tile control climatology to match length of pert simulation time dim
     ctrl_q_clim_tiled = tile_data(ctrl_q_clim,pert_q)
     
-    if(method==1):
+    if(method==3):
         diff_q = (pert_q - ctrl_q_clim_tiled)/ctrl_q_clim_tiled
     elif(method==4):
         diff_q = pert_q - ctrl_q_clim_tiled
-    elif(method in [2,3]):
+    elif(method in [2,1]):
         diff_q = np.log(pert_q) - np.log(ctrl_q_clim_tiled)
     else:
         raise ValueError(
@@ -1044,12 +1048,14 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
         specific humidity, while 4 uses the linear change. The options are:
-        1 -- Uses the fractional change approximation of logarithms in the specific
+        1 -- Uses the actual logarithm for both the specific humidity response
+        and the normalization factor.
+        2 -- Uses the fractional change approximation of logarithms only in the 
+        normalization factor, with the actual logarithm used in the specific humidity 
+        response.
+        3 -- Uses the fractional change approximation of logarithms in the specific 
         humidity response & normalization factor.
-        2 -- Uses the fractional change approximation of logarithms in the 
-        normalization factor.
-        3 -- Does not use the fractional change approximation.
-        4 -- Uses the linear change in specific humidity.
+        4 -- Uses the linear change in specific humidity for both.
 
     Returns
     -------
@@ -1063,7 +1069,7 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
         warnings.warn("Name keywords are deprecated and will be removed"+
                       " from future versions of ClimKern. Please use \"1\", "+
                       "\"2\", \"3\", or \"4\" instead.",FutureWarning)
-        mapping = {"pendergrass":1,"kramer":2,"zelinka":3,"linear":4}
+        mapping = {"pendergrass":3,"kramer":2,"zelinka":1,"linear":4}
         method = mapping[method]
 
     # get correct keys for all-sky or clear-sky
@@ -1111,11 +1117,11 @@ def calc_RH_feedback(ctrl_q,ctrl_ta,ctrl_ps,pert_q,pert_ta,pert_ps,
     # tile control climatology to match length of pert simulation time dim
     ctrl_q_clim_tiled = tile_data(ctrl_q_clim,pert_q)
     
-    if(method==1):
+    if(method==3):
         diff_q = (pert_q - ctrl_q_clim_tiled)/ctrl_q_clim_tiled
     elif(method==4):
         diff_q = pert_q - ctrl_q_clim_tiled
-    elif(method in [2,3]):
+    elif(method in [2,1]):
         diff_q = np.log(pert_q) - np.log(ctrl_q_clim_tiled)
     else:
         raise ValueError(
