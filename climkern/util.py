@@ -221,14 +221,14 @@ def calc_q_norm(ctrl_ta,ctrl_q,method):
         dq1K = 1000 * (q1K - ctrl_q)
         return(dq1K)
         
-    elif(method in [1,2]):
+    elif(method in [3,2]):
         dqsdT = qs1K - qs0
         dqdT = RH * dqsdT
 
         dlogqdT = 1000 * (dqdT / ctrl_q)
         return(dlogqdT)
         
-    elif(method==3):
+    elif(method==1):
         dlogqdT = 1000 * (np.log(qs1K.where(qs1K>0)) - np.log(
             qs0.where(qs0>0)))
         return(dlogqdT)
