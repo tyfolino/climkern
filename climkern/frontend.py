@@ -6,8 +6,6 @@ import numpy as np
 from importlib_resources import files
 from xarray import DataArray
 
-# import functions from util.py
-# from climkern.util import *
 from .util import *
 
 # change warning format
@@ -517,7 +515,7 @@ def calc_dCRE_LW(ctrl_FLNT,pert_FLNT,ctrl_FLNTC,pert_FLNTC):
 
     return(pert_CRE_LW - ctrl_CRE_LW)
 
-def calc_cloud_LW(t_as,t_cs,q_lwas,q_lwcs,dCRE_lw,IRF_lwas,IRF_lwcs):
+def calc_cloud_LW(t_as,t_cs,q_lwas,q_lwcs,dCRE_lw,rf_lwas,rf_lwcs):
     """
     Calculate the radiative perturbation from the longwave cloud feedback
     using the adjustment method outlined in Soden et al. (2008).
@@ -551,12 +549,12 @@ def calc_cloud_LW(t_as,t_cs,q_lwas,q_lwcs,dCRE_lw,IRF_lwas,IRF_lwcs):
         TOA with coords of time, lat, and lon and units of Wm^-2. positive 
         = downwards.
 
-    IRF_lwas : xarray DataArray
-        DataArray containing the LW all-sky instantaneous radiative forcing 
+    rf_lwas : xarray DataArray
+        DataArray containing the LW all-sky radiative forcing 
         in units of Wm^-2 with coords of lat, lon, and time.
 
-    IRF_lwcs : xarray DataArray
-        DataArray containing the LW clear-sky instantaneous radiative forcing
+    rf_lwcs : xarray DataArray
+        DataArray containing the LW clear-sky radiative forcing
         in units of Wm^-2 with coords of lat, lon, and time.
 
     Returns
@@ -572,17 +570,17 @@ def calc_cloud_LW(t_as,t_cs,q_lwas,q_lwcs,dCRE_lw,IRF_lwas,IRF_lwcs):
     # temperature cloud masking term
     dt = t_cs - t_as
 
-    # IRF cloud masking term
-    # first double check that the LW IRF is positive
-    irf_coeff = -1 if IRF_lwcs.mean() < 0 else 1
-    dIRF_lw = irf_coeff * (IRF_lwcs - IRF_lwas)
+    # RF cloud masking term
+    # first double check that the LW RF is positive
+    rf_coeff = -1 if rf_lwcs.mean() < 0 else 1
+    dRF_lw = rf_coeff * (rf_lwcs - rf_lwas)
 
     # calculate longwave cloud feedback
-    lw_cld_feedback = dCRE_lw + dt + dq_lw + dIRF_lw
+    lw_cld_feedback = dCRE_lw + dt + dq_lw + dRF_lw
 
     return(lw_cld_feedback)
 
-def calc_cloud_SW(alb_as,alb_cs,q_swas,q_swcs,dCRE_sw,IRF_swas,IRF_swcs):
+def calc_cloud_SW(alb_as,alb_cs,q_swas,q_swcs,dCRE_sw,RF_swas,RF_swcs):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the adjustment method outlined in Soden et al. (2008).
@@ -614,12 +612,12 @@ def calc_cloud_SW(alb_as,alb_cs,q_swas,q_swcs,dCRE_sw,IRF_swas,IRF_swcs):
         radiative effect at the top-of-atmosphere with coords of time, lat, 
         and lon and units of Wm^-2. positive = downwards.
 
-    IRF_swas : xarray DataArray
-        The shortwave all-sky instantaneous radiative forcing in units of 
+    RF_swas : xarray DataArray
+        The shortwave all-sky radiative forcing in units of 
         Wm^-2 with coords of lat, lon, and time.
 
-    IRF_swcs : xarray DataArray
-        The shortwave clear-sky instantaneous radiative forcing in units of 
+    RF_swcs : xarray DataArray
+        The shortwave clear-sky radiative forcing in units of 
         Wm^-2 with coords of lat, lon, and time.
 
     Returns
@@ -635,11 +633,11 @@ def calc_cloud_SW(alb_as,alb_cs,q_swas,q_swcs,dCRE_sw,IRF_swas,IRF_swcs):
     # surface albedo cloud masking term
     dalb = alb_cs - alb_as
 
-    # IRF cloud masking term
-    dIRF_sw = (IRF_swcs - IRF_swas)
+    # RF cloud masking term
+    dRF_sw = (RF_swcs - RF_swas)
 
     # calculate longwave cloud feedback
-    sw_cld_feedback = dCRE_sw + dalb + dq_sw + dIRF_sw
+    sw_cld_feedback = dCRE_sw + dalb + dq_sw + dRF_sw
 
     return(sw_cld_feedback)
 
@@ -664,8 +662,7 @@ def calc_cloud_LW_res(ctrl_FLNT,pert_FLNT,RF_lw,t_lw,q_lw):
         
     RF_lw : xarray DataArray
         The longwave all-sky radiative forcing in units of Wm^-2
-        with coords of lat, lon, and time. This is usually the stratosphere-
-        adjusted RF.
+        with coords of lat, lon, and time.
 
     t_lw : xarray DataArray
         DataArray containing the vertically integrated all-sky radiative 
@@ -689,8 +686,8 @@ def calc_cloud_LW_res(ctrl_FLNT,pert_FLNT,RF_lw,t_lw,q_lw):
     lw_coeff = 1 if ctrl_FLNT.mean() < 0 else -1
     dR_lw = lw_coeff * (pert_FLNT - ctrl_FLNT)
 
-    irf_coeff = -1 if RF_lw.mean() < 0 else 1
-    lw_cld_feedback = dR_lw - (irf_coeff * RF_lw) - t_lw - q_lw
+    rf_coeff = -1 if RF_lw.mean() < 0 else 1
+    lw_cld_feedback = dR_lw - (rf_coeff * RF_lw) - t_lw - q_lw
     return(lw_cld_feedback)
 
 def calc_cloud_SW_res(ctrl_FSNT,pert_FSNT,RF_sw,q_sw,alb_sw):
@@ -1175,17 +1172,18 @@ def tutorial_data(label):
 
     Parameters
     ----------
-    name : string
-        Specifies which data to access. Choices are "ctrl", "pert", "IRF", or 
-        "adjRF" for the 1xCO2, 2xCO2, instantaneous radiative forcing, and
-        stratosphere-adjusted radiative forcing, respectively.
+    label : string
+        Specifies which data to access. Choices are "ctrl", "pert", "IRF", "adjRF",
+         or "ERF" for the 1xCO2, 2xCO2, instantaneous radiative forcing,
+        stratosphere-adjusted radiative forcing, and effective radiative forcing,
+        respectively.
 
     Returns
     -------
     data : xarray Dataset
         Requested tutorial dataset.
     """
-    if label not in ['ctrl','pert','IRF','adjRF']:
+    if label not in ['ctrl','pert','IRF','adjRF','ERF']:
         raise ValueError('Invalid data name. See docstring for options.')
     path = 'data/tutorial_data/'+ label + ".nc"
     data = xr.open_dataset(files('climkern').joinpath(path))
