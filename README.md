@@ -1,11 +1,7 @@
 # ClimKern: a Python package for calculating radiative feedbacks
 
 [![DOI](https://zenodo.org/badge/588323813.svg)](https://zenodo.org/doi/10.5281/zenodo.10291284)
-
-## Citation
-If you use this package or any part of this code, please cite it! Until we have a paper prepared, please cite this package at software.
-
-Janoski, T. P., & Mitevski, I. (2024, April 6). ClimKern (Version 1.1.0). Retrieved from https://pypi.org/project/climkern/1.1.0/. <https://doi.org/10.5281/zenodo.10291284>.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
@@ -13,8 +9,8 @@ The radiative kernel technique outlined in [Soden & Held (2006)](https://journal
 
 ClimKern
 * standardizes the assumptions used in producing radiative feedbacks using kernels
-* simplifies the calculations by giving users access to functions tailored for climate model output
-* provides access to a repository of **12 different radiative kernels** to quantify interkernel spread
+* simplifies the calculations by giving users access to functions tailored for climate model and reanalysis output
+* provides access to a repository of **11 different radiative kernels** to quantify interkernel spread
 
 The below information is meant to be a quickstart guide, but all functions and capabilities can be found at ClimKern's [documentation site](https://tyfolino.github.io/climkern/).
 
@@ -24,7 +20,7 @@ ClimKern is built on the Xarray architecture and requires several other packages
 regridding and climate model output compatibility. The easiest method is to create a
 new conda environment using [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) or [mamba](https://mamba-framework.readthedocs.io/en/latest/installation_guide.html):
 
-`conda create -n ck_env python=3.10 esmpy -c conda-forge`
+`conda create -n ck_env python=3.11 esmpy -c conda-forge`
 
 A conda environment is necessary because [ESMPy](https://earthsystemmodeling.org/esmpy/), which is required for regridding kernels, is unavailable via `pip`.
 
@@ -40,7 +36,7 @@ Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/d
 
 `python -m climkern download`
 
-Note: The kernels & tutorial data are approximately 5.5 GB.
+Note: The kernels & tutorial data are approximately 5 GB.
 
 <i>Optional</i>:
 
@@ -60,14 +56,14 @@ This brief tutorial will cover the basics of using ClimKern. Please check the [d
 ```python
 import climkern as ck
 
-ctrl,pert = ck.tutorial_data('ctrl'),ck.tutorial_data('pert')
+ctrl, pert = ck.tutorial_data("ctrl"), ck.tutorial_data("pert")
 ```
 
 These datasets have all the necessary variables for computing feedbacks. Let's start with temperature feedbacks.
 ```python
-LR,Planck = ck.calc_T_feedbacks(ctrl.T,ctrl.TS,ctrl.PS,
-                                pert.T,pert.TS,pert.PS,pert.TROP_P,
-                                kern="GFDL")
+LR, Planck = ck.calc_T_feedbacks(
+    ctrl.T, ctrl.TS, ctrl.PS, pert.T, pert.TS, pert.PS, pert.TROP_P, kern="GFDL"
+)
 ```
 To produce succinct output, let's use ClimKern's spatial average function. Additionally, we will normalize the feedbacks by global average surface temperature change to convert from Wm<sup>-2</sup>, the output of ClimKern functions, to the more commonly used units of Wm<sup>-2</sup>K<sup>-1</sup>.
 ```python
@@ -114,11 +110,9 @@ First, we need the longwave and shortwave cloud radiative effects, which ClimKer
 dCRE_LW = ck.calc_dCRE_LW(ctrl.FLNT,pert.FLNT,ctrl.FLNTC,pert.FLNTC)
 dCRE_SW = ck.calc_dCRE_SW(ctrl.FSNT,pert.FSNT,ctrl.FSNTC,pert.FSNTC)
 ```
-Let's also read in the tutorial IRF.
+Let's also read in the tutorial erf.
 ```python
-IRF = ck.tutorial_data('IRF')
-# overwrite IRF latitude because of rounding error
-IRF['lat'] = ctrl.lat
+erf = ck.tutorial_data('ERF')
 ```
 Next, we need the clear-sky versions of the temperature, water vapor, and surface albedo feedbacks.
 ```python
@@ -128,7 +122,7 @@ LR_cs,Planck_cs = ck.calc_T_feedbacks(ctrl.T,ctrl.TS,ctrl.PS,
                                 kern="GFDL",sky="clear-sky")
 q_lw_cs,q_sw_cs = ck.calc_q_feedbacks(ctrl.Q,ctrl.T,ctrl.PS,
                                 pert.Q,pert.PS,pert.TROP_P,
-                                kern="GFDL",method="zelinka",sky="clear-sky")
+                                kern="GFDL",method=1,sky="clear-sky")
 alb_cs = ck.calc_alb_feedback(ctrl.FSUS,ctrl.FSDS,
                            pert.FSUS,pert.FSDS,
                            kern="GFDL",sky="clear-sky")
@@ -136,9 +130,9 @@ alb_cs = ck.calc_alb_feedback(ctrl.FSUS,ctrl.FSDS,
 At last, we can calculate the longwave and shortwave cloud feedbacks.
 ```python
 cld_lw = ck.calc_cloud_LW(LR + Planck,LR_cs+Planck_cs,q_lw,q_lw_cs,dCRE_LW,
-                          IRF.IRF_lwas,IRF.IRF_lwcs)
-cld_sw = ck.calc_cloud_SW(alb,alb_cs,q_sw,q_sw_cs,dCRE_SW,IRF.IRF_swas,
-                          IRF.IRF_swcs)
+                          erf.erf_lwas,erf.erf_lwcs)
+cld_sw = ck.calc_cloud_SW(alb,alb_cs,q_sw,q_sw_cs,dCRE_SW,erf.erf_swas,
+                          erf.erf_swcs)
 
 print("The global average SW cloud feedback is {val:.2f} W/m^2/K.".format(
     val=(ck.spat_avg(cld_sw)/dTS_glob_avg).mean()))
@@ -146,9 +140,9 @@ print("The global average LW cloud feedback is {val:.2f} W/m^2/K.".format(
     val=(ck.spat_avg(cld_lw)/dTS_glob_avg).mean()))
 ```
 Expected result:
->`The global average SW cloud feedback is 0.48 W/m^2/K.`
+>`The global average SW cloud feedback is 0.38 W/m^2/K.`
 >
->`The global average LW cloud feedback is 0.02 W/m^2/K.`
+>`The global average LW cloud feedback is 0.03 W/m^2/K.`
 
 ## Troubleshooting
 
@@ -169,3 +163,19 @@ We are continuously updating the package. Please check out the [GitHub issues pa
 ## Want to help? Get involved!
 
 We deeply appreciate contributions from other scientists and programmers and are happy to attribute credit accordingly. If you wish to contribute, please create a fork or branch from the `dev` channel (<b>not</b> `main`) and submit a pull request when you are done with your changes.
+
+## Citation
+If you use this package, please cite it as follows:
+
+```yaml
+@misc{ClimKern,
+  author = {Tyler P. Janoski, Ivan Mitevski, Kaitlyn Wen},
+  title = {ClimKern},
+  version = {1.1.2},
+  year = {2024},
+  publisher = {Zenodo},
+  doi = {10.5281/zenodo.10291284},
+  url = {https://doi.org/10.5281/zenodo.10291284}
+}
+```
+
