@@ -561,7 +561,7 @@ def calc_dCRE_LW(ctrl_FLNT, pert_FLNT, ctrl_FLNTC, pert_FLNTC):
     return pert_CRE_LW - ctrl_CRE_LW
 
 
-def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas, rf_lwcs):
+def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=0, rf_lwcs=0):
     """
     Calculate the radiative perturbation from the longwave cloud feedback
     using the adjustment method outlined in Soden et al. (2008).
@@ -597,11 +597,13 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas, rf_lwcs):
 
     rf_lwas : xarray DataArray
         DataArray containing the LW all-sky radiative forcing
-        in units of Wm^-2 with coords of lat, lon, and time.
+        in units of Wm^-2 with coords of lat, lon, and time. Defaults to 0
+        if not provided by user.
 
     rf_lwcs : xarray DataArray
         DataArray containing the LW clear-sky radiative forcing
-        in units of Wm^-2 with coords of lat, lon, and time.
+        in units of Wm^-2 with coords of lat, lon, and time. Defaults to 0
+        if not provided by user.
 
     Returns
     -------
@@ -627,7 +629,7 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas, rf_lwcs):
     return lw_cld_feedback
 
 
-def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, RF_swas, RF_swcs):
+def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=0, rf_swcs=0):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the adjustment method outlined in Soden et al. (2008).
@@ -659,13 +661,15 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, RF_swas, RF_swcs):
         radiative effect at the top-of-atmosphere with coords of time, lat,
         and lon and units of Wm^-2. positive = downwards.
 
-    RF_swas : xarray DataArray
+    rf_swas : xarray DataArray
         The shortwave all-sky radiative forcing in units of
-        Wm^-2 with coords of lat, lon, and time.
+        Wm^-2 with coords of lat, lon, and time. Defaults to 0 if not provided
+        by the user.
 
-    RF_swcs : xarray DataArray
+    rf_swcs : xarray DataArray
         The shortwave clear-sky radiative forcing in units of
-        Wm^-2 with coords of lat, lon, and time.
+        Wm^-2 with coords of lat, lon, and time. Defaults to 0 if not provided
+        by the user.
 
     Returns
     -------
@@ -681,7 +685,7 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, RF_swas, RF_swcs):
     dalb = alb_cs - alb_as
 
     # RF cloud masking term
-    dRF_sw = RF_swcs - RF_swas
+    dRF_sw = rf_swcs - rf_swas
 
     # calculate longwave cloud feedback
     sw_cld_feedback = dCRE_sw + dalb + dq_sw + dRF_sw
@@ -689,7 +693,7 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, RF_swas, RF_swcs):
     return sw_cld_feedback
 
 
-def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, RF_lw, t_lw, q_lw):
+def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=0):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
@@ -708,10 +712,6 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, RF_lw, t_lw, q_lw):
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards.
 
-    RF_lw : xarray DataArray
-        The longwave all-sky radiative forcing in units of Wm^-2
-        with coords of lat, lon, and time.
-
     t_lw : xarray DataArray
         DataArray containing the vertically integrated all-sky radiative
         perturbation at the TOA from the total temperature feedback. The
@@ -722,6 +722,11 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, RF_lw, t_lw, q_lw):
         DataArray containing the vertically integrated LW all-sky radiative
         perturbation at the TOA from the water vapor feedback. Should have
         coords of lat, lon, and time.
+
+    rf_lw : xarray DataArray
+        The longwave all-sky radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time. Defaults to 0 if not provided
+        by the user.
 
     Returns
     -------
@@ -734,12 +739,12 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, RF_lw, t_lw, q_lw):
     lw_coeff = 1 if ctrl_FLNT.mean() < 0 else -1
     dR_lw = lw_coeff * (pert_FLNT - ctrl_FLNT)
 
-    rf_coeff = -1 if RF_lw.mean() < 0 else 1
-    lw_cld_feedback = dR_lw - (rf_coeff * RF_lw) - t_lw - q_lw
+    rf_coeff = -1 if rf_lw.mean() < 0 else 1
+    lw_cld_feedback = dR_lw - (rf_coeff * rf_lw) - t_lw - q_lw
     return lw_cld_feedback
 
 
-def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, RF_sw, q_sw, alb_sw):
+def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=0):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
@@ -758,11 +763,6 @@ def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, RF_sw, q_sw, alb_sw):
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards/incoming.
 
-    RF_sw : xarray DataArray
-        The shortwave all-sky radiative forcing in units of Wm^-2
-        with coords of lat, lon, and time. This is usually the stratosphere-
-        adjusted RF.
-
     q_sw : xarray DataArray
         DataArray containing the vertically integrated all-sky LW radiative
         perturbation at the TOA from the shortwave water vapor feedback.
@@ -773,6 +773,11 @@ def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, RF_sw, q_sw, alb_sw):
         from the surface albedo feedback. Should have coords of lat, lon, and
         time.
 
+    rf_sw : xarray DataArray
+        The shortwave all-sky radiative forcing in units of Wm^-2
+        with coords of lat, lon, and time. This is usually the stratosphere-
+        adjusted RF. Defaults to 0 if not provided by the user.
+
     Returns
     -------
     sw_cld_feedback : xarray DataArray
@@ -782,7 +787,7 @@ def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, RF_sw, q_sw, alb_sw):
     # Calculate ΔR as the difference in net shortwave flux
     dR_sw = pert_FSNT - ctrl_FSNT
 
-    sw_cld_feedback = dR_sw - RF_sw - q_sw - alb_sw
+    sw_cld_feedback = dR_sw - rf_sw - q_sw - alb_sw
     return sw_cld_feedback
 
 
