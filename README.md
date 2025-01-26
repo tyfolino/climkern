@@ -38,10 +38,11 @@ Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/d
 
 Note: The kernels & tutorial data are approximately 5 GB.
 
-> [!IMPORTANT] SSL Certificate Errors
-> It is possible to get an SSL certificate error when trying to run the download script. You may try updating your certificate authorities with `pip install --upgrade certifi`.
->
-> If that does not work, you can manually download the data.zip file from Zenodo and unzip in your ClimKern package directory.
+> **IMPORTANT:** SSL Certificate Errors  
+> It is possible to get an SSL certificate error when trying to run the download script. You may try updating your certificate authorities with `pip install --upgrade certifi`.  
+>  
+> If that does not work, you can manually download the `data.zip` file from Zenodo and unzip it in your ClimKern package directory.
+
 
 <i>Optional</i>:
 
