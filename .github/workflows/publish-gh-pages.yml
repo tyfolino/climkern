@@ -21,7 +21,7 @@ jobs:
         uses: mamba-org/provision-with-micromamba@main
         with:
           cache-downloads: true
-          micromamba-version: 'latest'
+          micromamba-version: '1.4.1'
           environment-file: ci/environment.yml
       - name: Install editable climkern
         run: |
