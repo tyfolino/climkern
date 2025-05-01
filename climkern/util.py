@@ -113,9 +113,15 @@ def tile_data(to_tile, new_shape):
     # new_shape = _check_time(new_shape)
     if len(new_shape.time) % 12 != 0:
         raise ValueError("dataset time dimension must be divisible by 12")
-    tiled = xr.concat(
-        [to_tile for i in range(int(len(new_shape.time) / 12))], dim="time"
-    )
+    if 'month' not in to_tile.coords:
+        tiled = xr.concat(
+            [to_tile for i in range(int(len(new_shape.time) / 12))], dim="time"
+            )
+    if 'month' in to_tile.dims and len(to_tile.month) == 12:
+        to_tile = to_tile.rename({'month':'time'})
+        tiled = xr.concat(
+            [to_tile for i in range(int(len(new_shape.time) / 12))], dim="time"
+            )
     tiled["time"] = new_shape.time
     return tiled
 
