@@ -99,7 +99,7 @@ def check_plev_units(da):
 def check_pres_units(da, var_name):
     if "units" not in da.attrs:
         warnings.warn("Could not determine units of " + var_name + ". Assuming Pa.")
-        da.assign_attrs({"units": "Pa"})
+        return da.assign_attrs({"units": "Pa"})
     elif da.units in ["hPa", "mb", "millibars"]:
         da = da * 100
         da.attrs["units"] = "Pa"
