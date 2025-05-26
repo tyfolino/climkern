@@ -762,7 +762,7 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
     return lw_cld_feedback
 
 
-def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=0):
+def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=None):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
