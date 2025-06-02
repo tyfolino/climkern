@@ -72,9 +72,11 @@ def calc_alb_feedback(
     alb_key = "sw_a" if check_sky(sky) == "all-sky" else "swclr_a"
 
     # check input coordinates
-    for d in [ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds]:
-        d = check_coords(d)
-
+    ctrl_rsus = check_coords(ctrl_rsus)
+    ctrl_rsds = check_coords(ctrl_rsds)
+    pert_rsus = check_coords(pert_rsus)
+    pert_rsds = check_coords(pert_rsds)
+    
     # calculate albedo and create control climatology
     ctrl_alb_clim = make_clim(get_albedo(ctrl_rsus, ctrl_rsds))
     pert_alb = get_albedo(pert_rsus, pert_rsds)
@@ -191,10 +193,12 @@ def calc_T_feedbacks(
         qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    for d in [ctrl_ta, pert_ta]:
-        d = check_coords(d, ndim=4)
-    for d in [ctrl_ts, ctrl_ps, pert_ts, pert_ps]:
-        d = check_coords(d)
+    ctrl_ta = check_coords(ctrl_ta, ndim=4)
+    pert_ta = check_coords(pert_ta, ndim=4)
+    ctrl_ts = check_coords(ctrl_ts)
+    ctrl_ps = check_coords(ctrl_ps)
+    pert_ts = check_coords(pert_ts)
+    pert_ps = check_coords(pert_ps)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -363,10 +367,11 @@ def calc_q_feedbacks(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    for d in [ctrl_q, ctrl_ta, pert_q]:
-        d = check_coords(d, ndim=4)
-    for d in [ctrl_ps, pert_ps]:
-        d = check_coords(d)
+    ctrl_q = check_coords(ctrl_q, ndim=4)
+    ctrl_ta = check_coords(ctrl_ta, ndim=4)
+    pert_q = check_coords(pert_q, ndim=4)
+    ctrl_ps = check_coords(ctrl_ps)
+    pert_ps = check_coords(pert_ps)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -863,9 +868,9 @@ def calc_strato_T(
     t_key = "lw_t" if check_sky(sky) == "all-sky" else "lwclr_t"
 
     # check input coordinates
-    for d in [ctrl_ta, pert_ta]:
-        d = check_coords(d, ndim=4)
-    pert_ps = check_coords(pert_ps, ndim=3)
+    ctrl_ta = check_coords(ctrl_ta, ndim=4)
+    pert_ta = check_coords(pert_ta, ndim=4)
+    pert_ps = check_coords(pert_ps)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -1003,10 +1008,10 @@ def calc_strato_q(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    for d in [ctrl_q, ctrl_ta, pert_q]:
-        d = check_coords(d, ndim=4)
-    for d in [pert_ps]:
-        d = check_coords(d)
+    ctrl_q = check_coords(ctrl_q, ndim=4)
+    ctrl_ta = check_coords(ctrl_ta, ndim=4)
+    pert_q = check_coords(pert_q, ndim=4)
+    pert_ps = check_coords(pert_ps)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -1190,10 +1195,12 @@ def calc_RH_feedback(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    for d in [ctrl_q, ctrl_ta, pert_q, pert_ta]:
-        d = check_coords(d, ndim=4)
-    for d in [ctrl_ps, pert_ps]:
-        d = check_coords(d)
+    ctrl_q = check_coords(ctrl_q, ndim=4)
+    ctrl_ta = check_coords(ctrl_ta, ndim=4)
+    pert_q = check_coords(pert_q, ndim=4)
+    pert_ta = check_coords(pert_ta, ndim=4)
+    ctrl_ps = check_coords(ctrl_ps)
+    pert_ps = check_coords(pert_ps)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
