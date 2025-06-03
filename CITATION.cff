@@ -1,8 +1,12 @@
 cff-version: 1.2.0
-message: "If you use ClimKern, please cite it using the following reference."
+message: "If you use ClimKern, please cite the software and accompanying paper."
 title: "ClimKern"
-version: "1.1.2"
-doi: "10.5281/zenodo.10291284"
+version: "1.2.0"
+doi: "10.5281/zenodo.14743210"
+repository-code: https://github.com/tyfolino/climkern
+license: MIT
+date-released: "2025-01-26"
+
 authors:
   - family-names: "Janoski"
     given-names: "Tyler P."
@@ -13,12 +17,40 @@ authors:
       - "City College of New York, New York, NY, USA"
       - "NOAA National Severe Storms Laboratory, Norman, OK, USA"
     orcid: "0000-0003-4344-355X"
-    email: "tjanoski@ccny.cuny.edu"
+    email: "tyfolino@gmail.com"
   - family-names: "Mitevski"
     given-names: "Ivan"
     affiliation: "Dept. of Geosciences, Princeton University, Princeton, NJ, USA"
     orcid: "0000-0001-9172-3236"
+
+contributors:
   - family-names: "Wen"
     given-names: "Kaitlyn"
     affiliation: "Dept. of Computer Science, Princeton University, Princeton, NJ, USA"
-date-released: "2024-08-08"
+
+preferred-citation:
+  type: article
+  title: "ClimKern: A Python package for calculating radiative feedbacks using climate model kernels"
+  authors:
+    - family-names: "Janoski"
+      given-names: "Tyler P."
+      orcid: "0000-0003-4344-355X"
+    - family-names: "Mitevski"
+      given-names: "Ivan"
+      orcid: "0000-0001-9172-3236"
+    - family-names: "Kramer"
+      given-names: "Ryan J."
+      orcid: "0000-0002-9377-0674"
+    - family-names: "Previdi"
+      given-names: "Michael"
+      orcid: "0000-0001-7701-1849"
+    - family-names: "Polvani"
+      given-names: "Lorenzo M."
+      orcid: "0000-0003-4775-8110"
+  journal: "Geoscientific Model Development"
+  volume: "18"
+  issue: "10"
+  pages: "3065–3080"
+  year: 2025
+  doi: "10.5194/gmd-18-3065-2025"
+  url: "https://gmd.copernicus.org/articles/18/3065/2025/"
