@@ -198,5 +198,5 @@ Janoski, T. P., Mitevski, I., Kramer, R. J., Previdi, M., & Polvani, L. M. (2025
 
 </details>
 
-If you are citing the software itself (e.g., for reproducibility), use the citation metadata included in our [`CITATION.cff`](CITATION.cff) file. GitHub also provides downloadable citation formats via the "Cite this repository" button on the right-hand sidebar.
+If you are citing the software itself (e.g., for reproducibility), use the citation metadata included in our [`CITATION.cff`](CITATION.cff) file. GitHub's "cite this repository" button on the right-hand side defaults to providing the manuscript. We recommend citing both the paper and the software.
 
