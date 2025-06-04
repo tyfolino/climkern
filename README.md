@@ -1,6 +1,6 @@
 # ClimKern: a Python package for calculating radiative feedbacks
 
-[![DOI](https://zenodo.org/badge/588323813.svg)](https://zenodo.org/doi/10.5281/zenodo.10291284)
+[![DOI](https://zenodo.org/badge/588323813.svg)](https://doi.org/10.5281/zenodo.10291284)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
@@ -168,20 +168,35 @@ We are continuously updating the package. Please check out the [GitHub issues pa
 
 ## Want to help? Get involved!
 
-We deeply appreciate contributions from other scientists and programmers and are happy to attribute credit accordingly. If you wish to contribute, please create a fork or branch from the `dev` channel (<b>not</b> `main`) and submit a pull request when you are done with your changes.
+We deeply appreciate contributions from other scientists and programmers and are happy to attribute credit accordingly. If you wish to contribute, please read our [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidelines on how to get started.
 
-## Citation
-If you use this package, please cite it as follows:
+**tl;dr**:
+- Work from the `dev` branch, **not** `main`
+- Submit a pull request when ready.
 
-```yaml
-@misc{ClimKern,
-  author = {Tyler P. Janoski, Ivan Mitevski, Kaitlyn Wen},
-  title = {ClimKern},
-  version = {1.1.2},
-  year = {2024},
-  publisher = {Zenodo},
-  doi = {10.5281/zenodo.10291284},
-  url = {https://doi.org/10.5281/zenodo.10291284}
+## 📖 How to Cite ClimKern
+If you use ClimKern in your work, please cite our paper:
+
+Janoski, T. P., Mitevski, I., Kramer, R. J., Previdi, M., & Polvani, L. M. (2025). ClimKern v1.2: a new Python package and kernel repository for calculating radiative feedbacks. *Geoscientific Model Development*, *18*(10), 3065–3079. https://doi.org/10.5194/gmd-18-3065-2025
+
+<details>
+<summary>BibTeX</summary>
+
+```bibtex
+@article{janoski2025climkern,
+  AUTHOR = {Janoski, T. P. and Mitevski, I. and Kramer, R. J. and Previdi, M. and Polvani, L. M.},
+  TITLE = {ClimKern v1.2: a new Python package and kernel repository for calculating radiative feedbacks},
+  JOURNAL = {Geoscientific Model Development},
+  VOLUME = {18},
+  YEAR = {2025},
+  NUMBER = {10},
+  PAGES = {3065--3079},
+  URL = {https://gmd.copernicus.org/articles/18/3065/2025/},
+  DOI = {10.5194/gmd-18-3065-2025}
 }
 ```
+
+</details>
+
+If you are citing the software itself (e.g., for reproducibility), use the citation metadata included in our [`CITATION.cff`](CITATION.cff) file. GitHub also provides downloadable citation formats via the "Cite this repository" button on the right-hand sidebar.
 

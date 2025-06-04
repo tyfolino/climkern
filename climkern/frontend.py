@@ -76,7 +76,7 @@ def calc_alb_feedback(
     ctrl_rsds = check_coords(ctrl_rsds)
     pert_rsus = check_coords(pert_rsus)
     pert_rsds = check_coords(pert_rsds)
-    
+
     # calculate albedo and create control climatology
     ctrl_alb_clim = make_clim(get_albedo(ctrl_rsus, ctrl_rsds))
     pert_alb = get_albedo(pert_rsus, pert_rsds)
@@ -623,7 +623,7 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=Non
     # Check to make sure that either both or neither of rfs were provided
     if (rf_lwas is None) != (rf_lwcs is None):
         raise ValueError("Either both or neither of rf_lw terms must be specified.")
-    elif(rf_lwas is None and rf_lwcs is None):
+    elif rf_lwas is None and rf_lwcs is None:
         rf_lwas = xr.zeros_like(dq_lw)
         rf_lwcs = xr.zeros_like(dq_lw)
 
@@ -696,7 +696,7 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=None, rf_swcs
     # Check to make sure that either both or neither of rfs were provided
     if (rf_swas is None) != (rf_swcs is None):
         raise ValueError("Either both or neither of rf_sw terms must be specified.")
-    elif(rf_swas is None and rf_swcs is None):
+    elif rf_swas is None and rf_swcs is None:
         rf_swas = xr.zeros_like(dq_sw)
         rf_swcs = xr.zeros_like(dq_sw)
 
@@ -759,7 +759,7 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
     dR_lw = lw_coeff * (pert_FLNT - ctrl_FLNT)
 
     # Set rf to 0 if not provided
-    if (rf_lw is None):
+    if rf_lw is None:
         rf_lw = xr.zeros_like(dR_lw)
 
     rf_coeff = -1 if rf_lw.mean() < 0 else 1
@@ -811,7 +811,7 @@ def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=None):
     dR_sw = pert_FSNT - ctrl_FSNT
 
     # Set rf to 0 if not provided
-    if (rf_sw is None):
+    if rf_sw is None:
         rf_sw = xr.zeros_like(dR_sw)
 
     sw_cld_feedback = dR_sw - rf_sw - q_sw - alb_sw
