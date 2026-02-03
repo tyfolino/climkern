@@ -17,6 +17,9 @@ warnings.formatwarning = custom_formatwarning
 warnings.filterwarnings("ignore", ".*does not create an index anymore.*")
 
 
+#KK edits summary: made the LW CRE/SW CRE work better (make clim + tile data in both which previously wasn't there)
+#KK edits summary: added a loc kwarg to the clear sky feedbacks to allow for the surface kernel to be evaluated
+
 # def calc_alb_feedback(ctrl_rsus,ctrl_rsds,pert_rsus,pert_rsds,kern='GFDL',
 #                       sky="all-sky"):
 def calc_alb_feedback(
@@ -26,11 +29,12 @@ def calc_alb_feedback(
     pert_rsds: DataArray,
     kern: str = "GFDL",
     sky: str = "all-sky",
+    loc: str = 'TOA'
 ) -> DataArray:
     """
-    Calculate the radiative perturbation (W/m^2) from changes in surface
-    albedo using user-specified radiative kernel. Horizontal resolution
-    is kept at input data's resolution.
+    Calculate the radiative perturbation (W/m^2) at the TOA or the surface
+    from changes in surface albedo using user-specified radiative kernel. 
+    Horizontal resolution is kept at input data's resolution.
 
     Parameters
     ----------
@@ -61,10 +65,14 @@ def calc_alb_feedback(
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
+    loc : string, optional
+        String, either "TOA" or "SFC", specifying whether to calculate the feedbacks
+        for the TOA or Surface
+
     Returns
     -------
     alb_feedback : xarray DataArray
-        3D DataArray containing radiative perturbations at TOA caused by
+        3D DataArray containing radiative perturbations at TOA or the surface caused by
         changes in surface albedo with coordinates of time, latitude, and
         longitude.
     """
@@ -72,10 +80,8 @@ def calc_alb_feedback(
     alb_key = "sw_a" if check_sky(sky) == "all-sky" else "swclr_a"
 
     # check input coordinates
-    ctrl_rsus = check_coords(ctrl_rsus)
-    ctrl_rsds = check_coords(ctrl_rsds)
-    pert_rsus = check_coords(pert_rsus)
-    pert_rsds = check_coords(pert_rsds)
+    for d in [ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds]:
+        d = check_coords(d)
 
     # calculate albedo and create control climatology
     ctrl_alb_clim = make_clim(get_albedo(ctrl_rsus, ctrl_rsds))
@@ -86,7 +92,7 @@ def calc_alb_feedback(
     diff_alb = pert_alb - ctrl_alb_clim_tiled
 
     # read in and regrid surface albedo kernel
-    kernel = get_kern(kern)
+    kernel = get_kern(kern, loc)
     regridder = xe.Regridder(
         kernel[alb_key],
         diff_alb,
@@ -113,12 +119,13 @@ def calc_T_feedbacks(
     pert_trop=None,
     kern="GFDL",
     sky="all-sky",
+    loc='TOA',
     fixRH=False,
 ):
     """
-    Calculate the raditive pertubations (W/m^2) at the TOA from changes in
-    surface skin and air temperature using user-specified kernel. Horizontal
-    resolution is kept at input data's resolution.
+    Calculate the raditive pertubations (W/m^2) at the TOA or the surface
+    from changes in surface skin and air temperature using user-specified kernel. 
+    Horizontal resolution is kept at input data's resolution.
 
     Parameters
     ----------
@@ -166,6 +173,10 @@ def calc_T_feedbacks(
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
+    loc : string, optional
+        String, either "TOA" or "SFC", specifying whether to calculate the feedbacks
+        for the TOA or Surface
+    
     fixRH : boolean, optional
         Specifies whether to calculate alternative Planck and lapse rate
         feedbacks using relative humidity as a state variable, as outlined
@@ -174,12 +185,12 @@ def calc_T_feedbacks(
     Returns
     -------
     lr_feedback : xarray DataArray
-        3D DataArray containing radiative perturbations at TOA caused by
+        3D DataArray containing radiative perturbations at TOA or surface caused by
         changes in tropospheric lapse rate with coordinates of time, latitude,
         and longitude.
 
     planck_feedback : xarray DataArray
-        3D DataArray containing radiative perturbations at TOA caused by
+        3D DataArray containing radiative perturbations at TOA or surface caused by
         vertically-uniform temperature change with coordinates of time,
         latitude, and longitude.
     """
@@ -193,12 +204,10 @@ def calc_T_feedbacks(
         qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_ta = check_coords(pert_ta, ndim=4)
-    ctrl_ts = check_coords(ctrl_ts)
-    ctrl_ps = check_coords(ctrl_ps)
-    pert_ts = check_coords(pert_ts)
-    pert_ps = check_coords(pert_ps)
+    for d in [ctrl_ta, pert_ta]:
+        d = check_coords(d, ndim=4)
+    for d in [ctrl_ts, ctrl_ps, pert_ts, pert_ps]:
+        d = check_coords(d)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -208,6 +217,9 @@ def calc_T_feedbacks(
     ctrl_ps = check_pres_units(ctrl_ps, "ctrl PS")
     pert_ps = check_pres_units(pert_ps, "pert PS")
 
+    #KAWAGUCHI
+    print(type(pert_ps))
+    
     # check tropopause units if provided by user, else create dummy tropopause
     if type(pert_trop) == type(None):
         pert_trop = make_tropo(pert_ps)
@@ -226,7 +238,7 @@ def calc_T_feedbacks(
     diff_ts = pert_ts - tile_data(ctrl_ts_clim, pert_ts)
 
     # read in and regrid temperature kernel
-    kernel = check_plev(get_kern(kern))
+    kernel = check_plev(get_kern(kern, loc))
     regridder = xe.Regridder(
         kernel[t_key],
         diff_ts,
@@ -279,10 +291,11 @@ def calc_q_feedbacks(
     pert_trop=None,
     kern="GFDL",
     sky="all-sky",
+    loc='TOA',
     method=1,
 ):
     """
-    Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA from
+    Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA or surface from
     changes in specific humidity using user-specified kernel. Horizontal
     resolution is kept at input data's resolution.
 
@@ -327,6 +340,10 @@ def calc_q_feedbacks(
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
+    loc : string, optional
+        String, either "TOA" or "SFC", specifying whether to calculate the feedbacks
+        for the TOA or Surface
+    
     method : int, optional
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
@@ -343,12 +360,12 @@ def calc_q_feedbacks(
     Returns
     -------
     lw_q_feedback : xarray DataArray
-        3D DataArray containing LW radiative perturbations at TOA caused by
+        3D DataArray containing LW radiative perturbations at TOA or surface caused by
         changes in specific humidity with coordinates of time, latitude,
         and longitude.
 
     sw_q_feedback : xarray DataArray
-        3D DataArray containing SW radiative perturbations at TOA caused by
+        3D DataArray containing SW radiative perturbations at TOA or surface caused by
         changes in specific humidity with coordinates of time, latitude,
         and longitude.
     """
@@ -367,11 +384,10 @@ def calc_q_feedbacks(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q = check_coords(ctrl_q, ndim=4)
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_q = check_coords(pert_q, ndim=4)
-    ctrl_ps = check_coords(ctrl_ps)
-    pert_ps = check_coords(pert_ps)
+    for d in [ctrl_q, ctrl_ta, pert_q]:
+        d = check_coords(d, ndim=4)
+    for d in [ctrl_ps, pert_ps]:
+        d = check_coords(d)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -420,7 +436,7 @@ def calc_q_feedbacks(
         raise ValueError("Please select a valid choice for the method argument.")
 
     # read in and regrid water vapor kernel
-    kernel = check_plev(get_kern(kern))
+    kernel = check_plev(get_kern(kern,loc))
     regridder = xe.Regridder(
         kernel[qlw_key],
         diff_q,
@@ -474,31 +490,31 @@ def calc_q_feedbacks(
 
 def calc_dCRE_SW(ctrl_FSNT, pert_FSNT, ctrl_FSNTC, pert_FSNTC):
     """
-    Calculate the change in the SW cloud radiative effect at the TOA.
+    Calculate the change in the SW cloud radiative effect at the TOA or surface.
 
     Parameters
     ----------
     ctrl_FSNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net shortwave flux
-        at the top-of-atmosphere in the control simulation
+        at the top-of-atmosphere or surface in the control simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards/incoming.
 
     pert_FSNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net shortwave flux
-        at the top-of-atmosphere in the perturbed simulation
+        at the top-of-atmosphere or surface in the perturbed simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards/incoming.
 
     ctrl_FSNTC : xarray DataArray
         Three-dimensional DataArray containing the clear-sky net shortwave
-        flux at the top-of-atmosphere in the control simulation
+        flux at the top-of-atmosphere or surface in the control simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards/incoming.
 
     pert_FSNTC : xarray DataArray
         Three-dimensional DataArray containing the clear-sky net shortwave
-        flux at the top-of-atmosphere in the perturbed simulation
+        flux at the top-of-atmosphere or surface in the perturbed simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards/incoming.
 
@@ -507,45 +523,47 @@ def calc_dCRE_SW(ctrl_FSNT, pert_FSNT, ctrl_FSNTC, pert_FSNTC):
     -------
     dCRE_SW : xarray DataArray
         Three-dimensional DataArray containing the change in shortwave cloud
-        radiative effect at the top-of-atmosphere with coords of time, lat,
+        radiative effect at the top-of-atmosphere or surface with coords of time, lat,
         and lon and units of Wm^-2. positive = downwards.
     """
     # double check the signs of SW fluxes
     sw_coeff = -1 if ctrl_FSNT.mean() < 0 else 1
 
     ctrl_CRE_SW = sw_coeff * (ctrl_FSNT - ctrl_FSNTC)
+    ctrl_CRE_SW_clim = make_clim(ctrl_CRE_SW)
     pert_CRE_SW = sw_coeff * (pert_FSNT - pert_FSNTC)
 
-    return pert_CRE_SW - ctrl_CRE_SW
-
+    ctrl_CRE_SW_tiled = tile_data(ctrl_CRE_SW_clim, pert_CRE_SW)
+    
+    return pert_CRE_SW - ctrl_CRE_SW_tiled
 
 def calc_dCRE_LW(ctrl_FLNT, pert_FLNT, ctrl_FLNTC, pert_FLNTC):
     """
-    Calculate the change in the LW cloud radiative effect at the TOA.
+    Calculate the change in the LW cloud radiative effect at the TOA or surface.
 
     Parameters
     ----------
     ctrl_FLNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net longwave flux
-        at the top-of-atmosphere in the control simulation
+        at the top-of-atmosphere or surface in the control simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards.
 
     pert_FLNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net longwave flux
-        at the top-of-atmosphere in the perturbed simulation
+        at the top-of-atmosphere or surface in the perturbed simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards.
 
     ctrl_FLNTC : xarray DataArray
         Three-dimensional DataArray containing the clear-sky net longwave flux
-        at the top-of-atmosphere in the control simulation
+        at the top-of-atmosphere or surface in the control simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards.
 
     pert_FLNTC : xarray DataArray
         Three-dimensional DataArray containing the clear-sky net longwave flux
-        at the top-of-atmosphere in the perturbed simulation
+        at the top-of-atmosphere or surface in the perturbed simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards.
 
@@ -554,16 +572,19 @@ def calc_dCRE_LW(ctrl_FLNT, pert_FLNT, ctrl_FLNTC, pert_FLNTC):
     -------
     dCRE_LW : xarray DataArray
         Three-dimensional DataArray containing the change in longwave cloud
-        radiative effect at the top-of-atmosphere with coords of time, lat,
+        radiative effect at the top-of-atmosphere or surface with coords of time, lat,
         and lon and units of Wm^-2. positive = downwards.
     """
     # double check the signs of LW/SW fluxes
     lw_coeff = -1 if ctrl_FLNT.mean() > 0 else 1
-
+        
     ctrl_CRE_LW = lw_coeff * (ctrl_FLNT - ctrl_FLNTC)
+    ctrl_CRE_LW_clim = make_clim(ctrl_CRE_LW)
     pert_CRE_LW = lw_coeff * (pert_FLNT - pert_FLNTC)
 
-    return pert_CRE_LW - ctrl_CRE_LW
+    ctrl_CRE_LW_tiled = tile_data(ctrl_CRE_LW_clim, pert_CRE_LW)
+    
+    return pert_CRE_LW - ctrl_CRE_LW_tiled
 
 
 def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=None):
@@ -575,29 +596,29 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=Non
     ----------
     t_as : xarray DataArray
         DataArray containing the vertically integrated all-sky radiative
-        perturbation at the TOA from the total temperature feedback. The
+        perturbation at the TOA or surface from the total temperature feedback. The
         total temperature feedback is the sum of the Planck and lapse rate
         feedbacks. Should have dims of lat, lon, and time.
 
     t_cs : xarray DataArray
         DataArray containing the vertically integrated clear-sky radiative
-        perturbation at the TOA from the total temperature feedback. The
+        perturbation at the TOA or surface from the total temperature feedback. The
         total temperature feedback is the sum of the Planck and lapse rate
         feedbacks. Should have dims of lat, lon, and time.
 
     q_lwas : xarray DataArray
         DataArray containing the vertically integrated LW all-sky radiative
-        perturbation at the TOA from the water vapor feedback. Should have
+        perturbation at the TOA or surface from the water vapor feedback. Should have
         coords of lat, lon, and time.
 
     q_lwcs : xarray DataArray
         DataArray containing the vertically integrated LW clear-sky radiative
-        perturbation at the TOA from the water vapor feedback. Should have
+        perturbation at the TOA or surface from the water vapor feedback. Should have
         coords of lat, lon, and time.
 
     dCRE_lw : xarray DataArray
         DataArray containing the change in LW cloud radiative effect at the
-        TOA with coords of time, lat, and lon and units of Wm^-2. positive
+        TOA or surface with coords of time, lat, and lon and units of Wm^-2. positive
         = downwards.
 
     rf_lwas : xarray DataArray
@@ -613,7 +634,7 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=Non
     Returns
     -------
     lw_cld_feedback : xarray DataArray
-        Three-dimensional DataArray containing the TOA radiative perturbation
+        Three-dimensional DataArray containing the TOA or surface radiative perturbation
         from the longwave cloud feedback.
     """
     # Assume all are on the same horizontal grid.
@@ -623,7 +644,7 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=Non
     # Check to make sure that either both or neither of rfs were provided
     if (rf_lwas is None) != (rf_lwcs is None):
         raise ValueError("Either both or neither of rf_lw terms must be specified.")
-    elif rf_lwas is None and rf_lwcs is None:
+    elif(rf_lwas is None and rf_lwcs is None):
         rf_lwas = xr.zeros_like(dq_lw)
         rf_lwcs = xr.zeros_like(dq_lw)
 
@@ -649,28 +670,28 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=None, rf_swcs
     Parameters
     ----------
     alb_as : xarray DataArray
-        DataArray containing the all-sky radiative perturbation at the TOA
+        DataArray containing the all-sky radiative perturbation at the TOA or surface
         from the surface albedo feedback. Should have coords of lat, lon, and
         time.
 
     alb_cs : xarray DataArray
-        DataArray containing the clear-sky radiative perturbation at the TOA
+        DataArray containing the clear-sky radiative perturbation at the TOA or surface
         from the surface albedo feedback. Should have coords of lat, lon, and
         time.
 
     q_swas : xarray DataArray
         DataArray containing the vertically integrated all-sky LW radiative
-        perturbation at the TOA from the shortwave water vapor feedback.
+        perturbation at the TOA or surface from the shortwave water vapor feedback.
         Should have coords of lat, lon, and time.
 
     q_swcs : xarray DataArray
         DataArray containing the vertically integrated clear-sky LW radiative
-        perturbation at the TOA from the shortwave water vapor feedback.
+        perturbation at the TOA or surface from the shortwave water vapor feedback.
         Should have coords of lat, lon, and time.
 
     dCRE_sw : xarray DataArray
         Three-dimensional DataArray containing the change in shortwave cloud
-        radiative effect at the top-of-atmosphere with coords of time, lat,
+        radiative effect at the top-of-atmosphere or surface with coords of time, lat,
         and lon and units of Wm^-2. positive = downwards.
 
     rf_swas : xarray DataArray
@@ -686,7 +707,7 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=None, rf_swcs
     Returns
     -------
     sw_cld_feedback : xarray DataArray
-        Three-dimensional DataArray containing the TOA radiative perturbation
+        Three-dimensional DataArray containing the TOA or surface radiative perturbation
         from the shortwave cloud feedback.
     """
     # For now, we will assume all are on the same grid.
@@ -696,7 +717,7 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=None, rf_swcs
     # Check to make sure that either both or neither of rfs were provided
     if (rf_swas is None) != (rf_swcs is None):
         raise ValueError("Either both or neither of rf_sw terms must be specified.")
-    elif rf_swas is None and rf_swcs is None:
+    elif(rf_swas is None and rf_swcs is None):
         rf_swas = xr.zeros_like(dq_sw)
         rf_swcs = xr.zeros_like(dq_sw)
 
@@ -721,25 +742,25 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
     ----------
     ctrl_FLNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net longwave flux
-        at the top-of-atmosphere in the control simulation
+        at the top-of-atmosphere or surface in the control simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards.
 
     pert_FLNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net longwave flux
-        at the top-of-atmosphere in the perturbed simulation
+        at the top-of-atmosphere or surface in the perturbed simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards.
 
     t_lw : xarray DataArray
         DataArray containing the vertically integrated all-sky radiative
-        perturbation at the TOA from the total temperature feedback. The
+        perturbation at the TOA or surface from the total temperature feedback. The
         total temperature feedback is the sum of the Planck and lapse rate
         feedbacks. Should have dims of lat, lon, and time.
 
     q_lw : xarray DataArray
         DataArray containing the vertically integrated LW all-sky radiative
-        perturbation at the TOA from the water vapor feedback. Should have
+        perturbation at the TOA or surface from the water vapor feedback. Should have
         coords of lat, lon, and time.
 
     rf_lw : xarray DataArray
@@ -750,8 +771,8 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
     Returns
     -------
     lw_cld_feedback : xarray DataArray
-        Three-dimensional DataArray containing the TOA radiative perturbation
-        from the longwave cloud feedback.
+        Three-dimensional DataArray containing the TOA or surface
+        radiative perturbation from the longwave cloud feedback.
     """
     # Calculate ΔR as the difference in net longwave flux
     # double check that sign is correct first, though
@@ -759,7 +780,7 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
     dR_lw = lw_coeff * (pert_FLNT - ctrl_FLNT)
 
     # Set rf to 0 if not provided
-    if rf_lw is None:
+    if (rf_lw is None):
         rf_lw = xr.zeros_like(dR_lw)
 
     rf_coeff = -1 if rf_lw.mean() < 0 else 1
@@ -767,7 +788,7 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
     return lw_cld_feedback
 
 
-def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=None):
+def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=0):
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
@@ -776,23 +797,23 @@ def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=None):
     ----------
     ctrl_FSNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net shortwave flux
-        at the top-of-atmosphere in the control simulation
+        at the top-of-atmosphere or surface in the control simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards/incoming.
 
     pert_FSNT : xarray DataArray
         Three-dimensional DataArray containing the all-sky net shortwave flux
-        at the top-of-atmosphere in the perturbed simulation
+        at the top-of-atmosphere or surface in the perturbed simulation
         with coords of time, lat, and lon and units of Wm^-2. It should be
         oriented such that positive = downwards/incoming.
 
     q_sw : xarray DataArray
         DataArray containing the vertically integrated all-sky LW radiative
-        perturbation at the TOA from the shortwave water vapor feedback.
+        perturbation at the TOA or surface from the shortwave water vapor feedback.
         Should have coords of lat, lon, and time.
 
     alb_sw : xarray DataArray
-        DataArray containing the all-sky radiative perturbation at the TOA
+        DataArray containing the all-sky radiative perturbation at the TOA or surface
         from the surface albedo feedback. Should have coords of lat, lon, and
         time.
 
@@ -804,14 +825,14 @@ def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=None):
     Returns
     -------
     sw_cld_feedback : xarray DataArray
-        Three-dimensional DataArray containing the TOA radiative perturbation
+        Three-dimensional DataArray containing the TOA or surface radiative perturbation
         from the shortwave cloud feedback.
     """
     # Calculate ΔR as the difference in net shortwave flux
     dR_sw = pert_FSNT - ctrl_FSNT
 
     # Set rf to 0 if not provided
-    if rf_sw is None:
+    if (rf_sw is None):
         rf_sw = xr.zeros_like(dR_sw)
 
     sw_cld_feedback = dR_sw - rf_sw - q_sw - alb_sw
@@ -868,9 +889,9 @@ def calc_strato_T(
     t_key = "lw_t" if check_sky(sky) == "all-sky" else "lwclr_t"
 
     # check input coordinates
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_ta = check_coords(pert_ta, ndim=4)
-    pert_ps = check_coords(pert_ps)
+    for d in [ctrl_ta, pert_ta]:
+        d = check_coords(d, ndim=4)
+    pert_ps = check_coords(pert_ps, ndim=3)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -1008,10 +1029,10 @@ def calc_strato_q(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q = check_coords(ctrl_q, ndim=4)
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_q = check_coords(pert_q, ndim=4)
-    pert_ps = check_coords(pert_ps)
+    for d in [ctrl_q, ctrl_ta, pert_q]:
+        d = check_coords(d, ndim=4)
+    for d in [pert_ps]:
+        d = check_coords(d)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -1111,10 +1132,11 @@ def calc_RH_feedback(
     pert_trop=None,
     kern="GFDL",
     sky="all-sky",
+    loc="TOA",
     method=1,
 ):
     """
-    Calculate the TOA radiative perturbations from changes in relative
+    Calculate the TOA or surface radiative perturbations from changes in relative
     humidity following Held & Shell (2012). Horizontal resolution is
     kept at input data's resolution.
 
@@ -1159,6 +1181,10 @@ def calc_RH_feedback(
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
+    loc : string, optional
+        String, either "TOA" or "SFC", specifying whether to calculate the feedbacks
+        for the TOA or Surface
+    
     method : int, optional
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
@@ -1195,12 +1221,10 @@ def calc_RH_feedback(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q = check_coords(ctrl_q, ndim=4)
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_q = check_coords(pert_q, ndim=4)
-    pert_ta = check_coords(pert_ta, ndim=4)
-    ctrl_ps = check_coords(ctrl_ps)
-    pert_ps = check_coords(pert_ps)
+    for d in [ctrl_q, ctrl_ta, pert_q, pert_ta]:
+        d = check_coords(d, ndim=4)
+    for d in [ctrl_ps, pert_ps]:
+        d = check_coords(d)
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -1250,7 +1274,7 @@ def calc_RH_feedback(
     diff_ta = pert_ta - tile_data(ctrl_ta_clim, pert_ta)
 
     # read in and regrid water vapor kernel
-    kernel = check_plev(get_kern(kern))
+    kernel = check_plev(get_kern(kern,loc))
     regridder = xe.Regridder(
         kernel[qlw_key],
         diff_q,
