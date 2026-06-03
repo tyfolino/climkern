@@ -11,3 +11,6 @@ dist/
 .venv/
 climkern/__init__.pyc
 climkern/util.pyc
+
+# setuptools-scm generated version file
+climkern/_version.py
