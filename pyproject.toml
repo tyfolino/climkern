@@ -1,14 +1,35 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "climkern"
+dynamic = ["version"]
+description = "Python package for easily computing climate feedbacks using radiative kernels."
+readme = "README.md"
+requires-python = ">= 3.9"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     {name = "Ty Janoski", email="tyfolino@gmail.com"},
 ]
-requires-python = ">= 3.9"
-version = "1.2"
+keywords = [
+    "climate",
+    "radiative kernels",
+    "climate feedbacks",
+    "climate science",
+    "xarray",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
 dependencies = [
     "xarray>=0.16.2",
     "cf-xarray>=0.5.1",
@@ -20,7 +41,12 @@ dependencies = [
     "plac",
     "netCDF4",
 ]
-readme="README.md"
+
+[project.urls]
+Homepage = "https://github.com/tyfolino/climkern"
+Documentation = "https://tyfolino.github.io/climkern/"
+Repository = "https://github.com/tyfolino/climkern"
+Issues = "https://github.com/tyfolino/climkern/issues"
 
 [project.optional-dependencies]
 test = [
@@ -28,8 +54,16 @@ test = [
 ]
 
 lint = [
-    "precommit>=2.20.0"
+    "pre-commit>=2.20.0",
 ]
+
+# Version is derived from git tags (no hardcoded number to bump)
+[tool.setuptools_scm]
+version_file = "climkern/_version.py"
+
+# Explicit package discovery (flat layout)
+[tool.setuptools.packages.find]
+include = ["climkern*"]
 
 # tools
 [tool.black]
