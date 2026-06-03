@@ -1,16 +1,17 @@
 cff-version: 1.2.0
 message: "If you use ClimKern, please cite the software and accompanying paper."
 title: "ClimKern"
-version: "1.2.0"
-doi: "10.5281/zenodo.14743210"
+version: "1.2.1"
+doi: "10.5281/zenodo.10291284"
 repository-code: https://github.com/tyfolino/climkern
 license: MIT
-date-released: "2025-01-26"
+date-released: "2026-06-03"
 
 authors:
   - family-names: "Janoski"
     given-names: "Tyler P."
     affiliation:
+      - "Dept. of Environmental Sciences, Rutgers University, New Brunswick, NJ, USA"
       - "Dept. of Earth & Environmental Sciences, Columbia University, New York, NY, USA"
       - "Lamont-Doherty Earth Observatory, Columbia University, Palisades, NY, USA"
       - "NOAA Center for Earth System Science and Remote Sensing Technologies (CESSRST-II), New York, NY, USA"
@@ -27,6 +28,11 @@ contributors:
   - family-names: "Wen"
     given-names: "Kaitlyn"
     affiliation: "Dept. of Computer Science, Princeton University, Princeton, NJ, USA"
+  - family-names: "Linke"
+    given-names: "Olivia"
+    affiliation: "Department of Meteorology (MISU), Stockholm University, Stockholm, Sweden"
+    orcid: "0000-0002-5286-2185"
+    alias: "olinke95"
 
 preferred-citation:
   type: article
