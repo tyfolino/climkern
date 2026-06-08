@@ -5,6 +5,7 @@ dependencies:
   - pip
   - esmpy
   - xarray
+  - scipy
   - xesmf
   - cftime
   - pooch
