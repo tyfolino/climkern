@@ -2,6 +2,7 @@ name: climkern
 channels:
   - conda-forge
 dependencies:
+  - pip
   - esmpy
   - xarray
   - xesmf
