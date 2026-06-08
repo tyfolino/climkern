@@ -11,7 +11,7 @@ concurrency:
 
 # Bump the suffix to force a re-download if the Zenodo archive changes.
 env:
-  DATA_CACHE_KEY: climkern-data-zenodo-10223376-v1
+  DATA_CACHE_KEY: climkern-data-zenodo-10223376-v2
 
 jobs:
   # Download the ~5 GB kernel + tutorial datasets from Zenodo exactly once and
