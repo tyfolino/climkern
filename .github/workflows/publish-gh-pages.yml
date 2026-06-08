@@ -16,12 +16,12 @@ jobs:
         shell: bash -l {0}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # full history + tags so setuptools-scm can derive the version
           fetch-depth: 0
       - name: Create conda environment
-        uses: mamba-org/setup-micromamba@v2
+        uses: mamba-org/setup-micromamba@v3
         with:
           cache-environment: true
           environment-file: ci/environment.yml
