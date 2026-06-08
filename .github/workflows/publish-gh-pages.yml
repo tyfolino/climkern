@@ -17,11 +17,13 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-      - name: Create conda environment
-        uses: mamba-org/provision-with-micromamba@main
         with:
-          cache-downloads: true
-          micromamba-version: '1.4.1'
+          # full history + tags so setuptools-scm can derive the version
+          fetch-depth: 0
+      - name: Create conda environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          cache-environment: true
           environment-file: ci/environment.yml
       - name: Install editable climkern
         run: |

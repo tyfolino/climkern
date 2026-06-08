@@ -1,0 +1,44 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # login shell is required so the micromamba env is activated
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          # full history + tags so setuptools-scm can derive the version
+          fetch-depth: 0
+
+      - name: Set up conda environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: ci/environment.yml
+          cache-environment: true
+          create-args: >-
+            python=${{ matrix.python-version }}
+            pytest
+
+      - name: Install climkern
+        run: python -m pip install --no-deps -e .
+
+      - name: Run tests
+        run: pytest -v climkern/tests
