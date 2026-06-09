@@ -41,11 +41,12 @@ def calc_alb_feedback(
     pert_rsds: DataArray,
     kern: str = "GFDL",
     sky: str = "all-sky",
+    loc: str = "TOA",
 ) -> DataArray:
     """
-    Calculate the radiative perturbation (W/m^2) from changes in surface
-    albedo using user-specified radiative kernel. Horizontal resolution
-    is kept at input data's resolution.
+    Calculate the radiative perturbation (W/m^2) at the TOA or the surface
+    from changes in surface albedo using user-specified radiative kernel.
+    Horizontal resolution is kept at input data's resolution.
 
     Parameters
     ----------
@@ -76,10 +77,14 @@ def calc_alb_feedback(
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
+    loc : string, optional
+        String, either "TOA" or "SFC", specifying whether to calculate the feedbacks
+        for the TOA or Surface
+
     Returns
     -------
     alb_feedback : xarray DataArray
-        3D DataArray containing radiative perturbations at TOA caused by
+        3D DataArray containing radiative perturbations at TOA or the surface caused by
         changes in surface albedo with coordinates of time, latitude, and
         longitude.
     """
@@ -87,10 +92,9 @@ def calc_alb_feedback(
     alb_key = "sw_a" if check_sky(sky) == "all-sky" else "swclr_a"
 
     # check input coordinates
-    ctrl_rsus = check_coords(ctrl_rsus)
-    ctrl_rsds = check_coords(ctrl_rsds)
-    pert_rsus = check_coords(pert_rsus)
-    pert_rsds = check_coords(pert_rsds)
+    ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds = (
+        check_coords(d) for d in [ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds]
+    )
 
     # calculate albedo and create control climatology
     ctrl_alb_clim = make_clim(get_albedo(ctrl_rsus, ctrl_rsds))
@@ -101,7 +105,7 @@ def calc_alb_feedback(
     diff_alb = pert_alb - ctrl_alb_clim_tiled
 
     # read in and regrid surface albedo kernel
-    kernel = get_kern(kern)
+    kernel = get_kern(kern, loc)
     regridder = xe.Regridder(
         kernel[alb_key],
         diff_alb,
@@ -208,12 +212,10 @@ def calc_T_feedbacks(
         qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_ta = check_coords(pert_ta, ndim=4)
-    ctrl_ts = check_coords(ctrl_ts)
-    ctrl_ps = check_coords(ctrl_ps)
-    pert_ts = check_coords(pert_ts)
-    pert_ps = check_coords(pert_ps)
+    ctrl_ta, pert_ta = (check_coords(d, ndim=4) for d in (ctrl_ta, pert_ta))
+    ctrl_ts, ctrl_ps, pert_ts, pert_ps = (
+        check_coords(d) for d in (ctrl_ts, ctrl_ps, pert_ts, pert_ps)
+    )
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -294,10 +296,11 @@ def calc_q_feedbacks(
     pert_trop=None,
     kern="GFDL",
     sky="all-sky",
+    loc="TOA",
     method=1,
 ):
     """
-    Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA from
+    Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA or surface from
     changes in specific humidity using user-specified kernel. Horizontal
     resolution is kept at input data's resolution.
 
@@ -342,6 +345,10 @@ def calc_q_feedbacks(
         String, either "all-sky" or "clear-sky", specifying whether to
         calculate the all-sky or clear-sky feedbacks. Defaults to "all-sky".
 
+    loc : string, optional
+        String, either "TOA" or "SFC", specifying whether to calculate the feedbacks
+        for the TOA or Surface
+
     method : int, optional
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
@@ -358,12 +365,12 @@ def calc_q_feedbacks(
     Returns
     -------
     lw_q_feedback : xarray DataArray
-        3D DataArray containing LW radiative perturbations at TOA caused by
+        3D DataArray containing LW radiative perturbations at TOA or surface caused by
         changes in specific humidity with coordinates of time, latitude,
         and longitude.
 
     sw_q_feedback : xarray DataArray
-        3D DataArray containing SW radiative perturbations at TOA caused by
+        3D DataArray containing SW radiative perturbations at TOA or surface caused by
         changes in specific humidity with coordinates of time, latitude,
         and longitude.
     """
@@ -383,11 +390,10 @@ def calc_q_feedbacks(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q = check_coords(ctrl_q, ndim=4)
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_q = check_coords(pert_q, ndim=4)
-    ctrl_ps = check_coords(ctrl_ps)
-    pert_ps = check_coords(pert_ps)
+    ctrl_q, ctrl_ta, pert_q = (
+        check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q)
+    )
+    ctrl_ps, pert_ps = (check_coords(d) for d in (ctrl_ps, pert_ps))
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -436,7 +442,7 @@ def calc_q_feedbacks(
         raise ValueError("Please select a valid choice for the method argument.")
 
     # read in and regrid water vapor kernel
-    kernel = check_plev(get_kern(kern))
+    kernel = check_plev(get_kern(kern, loc))
     regridder = xe.Regridder(
         kernel[qlw_key],
         diff_q,
@@ -530,9 +536,12 @@ def calc_dCRE_SW(ctrl_FSNT, pert_FSNT, ctrl_FSNTC, pert_FSNTC):
     sw_coeff = -1 if ctrl_FSNT.mean() < 0 else 1
 
     ctrl_CRE_SW = sw_coeff * (ctrl_FSNT - ctrl_FSNTC)
+    ctrl_CRE_SW_clim = make_clim(ctrl_CRE_SW)
     pert_CRE_SW = sw_coeff * (pert_FSNT - pert_FSNTC)
 
-    return pert_CRE_SW - ctrl_CRE_SW
+    ctrl_CRE_SW_tiled = tile_data(ctrl_CRE_SW_clim, pert_CRE_SW)
+
+    return pert_CRE_SW - ctrl_CRE_SW_tiled
 
 
 def calc_dCRE_LW(ctrl_FLNT, pert_FLNT, ctrl_FLNTC, pert_FLNTC):
@@ -577,9 +586,12 @@ def calc_dCRE_LW(ctrl_FLNT, pert_FLNT, ctrl_FLNTC, pert_FLNTC):
     lw_coeff = -1 if ctrl_FLNT.mean() > 0 else 1
 
     ctrl_CRE_LW = lw_coeff * (ctrl_FLNT - ctrl_FLNTC)
+    ctrl_CRE_LW_clim = make_clim(ctrl_CRE_LW)
     pert_CRE_LW = lw_coeff * (pert_FLNT - pert_FLNTC)
 
-    return pert_CRE_LW - ctrl_CRE_LW
+    ctrl_CRE_LW_tiled = tile_data(ctrl_CRE_LW_clim, pert_CRE_LW)
+
+    return pert_CRE_LW - ctrl_CRE_LW_tiled
 
 
 def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=None):
@@ -884,8 +896,7 @@ def calc_strato_T(
     t_key = "lw_t" if check_sky(sky) == "all-sky" else "lwclr_t"
 
     # check input coordinates
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_ta = check_coords(pert_ta, ndim=4)
+    ctrl_ta, pert_ta = (check_coords(d, ndim=4) for d in (ctrl_ta, pert_ta))
     pert_ps = check_coords(pert_ps)
 
     # check input units
@@ -1025,9 +1036,9 @@ def calc_strato_q(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q = check_coords(ctrl_q, ndim=4)
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_q = check_coords(pert_q, ndim=4)
+    ctrl_q, ctrl_ta, pert_q = (
+        check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q)
+    )
     pert_ps = check_coords(pert_ps)
 
     # check input units
@@ -1213,12 +1224,10 @@ def calc_RH_feedback(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q = check_coords(ctrl_q, ndim=4)
-    ctrl_ta = check_coords(ctrl_ta, ndim=4)
-    pert_q = check_coords(pert_q, ndim=4)
-    pert_ta = check_coords(pert_ta, ndim=4)
-    ctrl_ps = check_coords(ctrl_ps)
-    pert_ps = check_coords(pert_ps)
+    ctrl_q, ctrl_ta, pert_q, pert_ta = (
+        check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q, pert_ta)
+    )
+    ctrl_ps, pert_ps = (check_coords(d) for d in (ctrl_ps, pert_ps))
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
