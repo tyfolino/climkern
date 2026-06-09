@@ -26,11 +26,11 @@ def calc_alb_feedback(
     pert_rsds: DataArray,
     kern: str = "GFDL",
     sky: str = "all-sky",
-    loc: str = 'TOA'
+    loc: str = "TOA",
 ) -> DataArray:
     """
     Calculate the radiative perturbation (W/m^2) at the TOA or the surface
-    from changes in surface albedo using user-specified radiative kernel. 
+    from changes in surface albedo using user-specified radiative kernel.
     Horizontal resolution is kept at input data's resolution.
 
     Parameters
@@ -77,7 +77,9 @@ def calc_alb_feedback(
     alb_key = "sw_a" if check_sky(sky) == "all-sky" else "swclr_a"
 
     # check input coordinates
-    ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds = (check_coords(d) for d in [ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds])
+    ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds = (
+        check_coords(d) for d in [ctrl_rsus, ctrl_rsds, pert_rsus, pert_rsds]
+    )
 
     # calculate albedo and create control climatology
     ctrl_alb_clim = make_clim(get_albedo(ctrl_rsus, ctrl_rsds))
@@ -196,7 +198,9 @@ def calc_T_feedbacks(
 
     # check input coordinates
     ctrl_ta, pert_ta = (check_coords(d, ndim=4) for d in (ctrl_ta, pert_ta))
-    ctrl_ts, ctrl_ps, pert_ts, pert_ps = (check_coords(d) for d in (ctrl_ts, ctrl_ps, pert_ts, pert_ps))
+    ctrl_ts, ctrl_ps, pert_ts, pert_ps = (
+        check_coords(d) for d in (ctrl_ts, ctrl_ps, pert_ts, pert_ps)
+    )
 
     # check input units
     ctrl_ta = check_var_units(check_plev_units(ctrl_ta), "T")
@@ -277,7 +281,7 @@ def calc_q_feedbacks(
     pert_trop=None,
     kern="GFDL",
     sky="all-sky",
-    loc='TOA',
+    loc="TOA",
     method=1,
 ):
     """
@@ -329,7 +333,7 @@ def calc_q_feedbacks(
     loc : string, optional
         String, either "TOA" or "SFC", specifying whether to calculate the feedbacks
         for the TOA or Surface
-    
+
     method : int, optional
         Specifies the method to use to calculate the specific humidity
         feedback. Options 1, 2, and 3 use the change in the natural logarithm of
@@ -370,7 +374,9 @@ def calc_q_feedbacks(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q, ctrl_ta, pert_q = (check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q))
+    ctrl_q, ctrl_ta, pert_q = (
+        check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q)
+    )
     ctrl_ps, pert_ps = (check_coords(d) for d in (ctrl_ps, pert_ps))
 
     # check input units
@@ -420,7 +426,7 @@ def calc_q_feedbacks(
         raise ValueError("Please select a valid choice for the method argument.")
 
     # read in and regrid water vapor kernel
-    kernel = check_plev(get_kern(kern,loc))
+    kernel = check_plev(get_kern(kern, loc))
     regridder = xe.Regridder(
         kernel[qlw_key],
         diff_q,
@@ -1013,7 +1019,9 @@ def calc_strato_q(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q, ctrl_ta, pert_q = (check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q))
+    ctrl_q, ctrl_ta, pert_q = (
+        check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q)
+    )
     pert_ps = check_coords(pert_ps)
 
     # check input units
@@ -1198,7 +1206,9 @@ def calc_RH_feedback(
     qsw_key = "sw_q" if sky == "all-sky" else "swclr_q"
 
     # check input coordinates
-    ctrl_q, ctrl_ta, pert_q, pert_ta = (check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q, pert_ta))
+    ctrl_q, ctrl_ta, pert_q, pert_ta = (
+        check_coords(d, ndim=4) for d in (ctrl_q, ctrl_ta, pert_q, pert_ta)
+    )
     ctrl_ps, pert_ps = (check_coords(d) for d in (ctrl_ps, pert_ps))
 
     # check input units
