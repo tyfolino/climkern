@@ -10,7 +10,7 @@ def custom_formatwarning(msg, cat, *args, **kwargs):
     return str(cat.__name__) + ": " + str(msg) + "\n"
 
 
-warnings.formatwarning = custom_formatwarning
+warnings.formatwarning = custom_formatwarning  # type: ignore[assignment]
 
 # filter out warnings from xarray when using the rename function
 # ideally, this can be removed in the future
@@ -66,10 +66,10 @@ def check_var_units(da, var):
     """Check to see if the xarray DataArray has a units attribute."""
     if "units" not in da.attrs:
         if var == "q":
-            warnings.warn("No units found for input q. Assuming kg/kg.")
+            warnings.warn("No units found for input q. Assuming kg/kg.", stacklevel=2)
             return da.assign_attrs({"units": "kg/kg"})
         elif var == "T":
-            warnings.warn("No units found for input T. Assuming K.")
+            warnings.warn("No units found for input T. Assuming K.", stacklevel=2)
             return da.assign_attrs({"units": "K"})
     else:
         return da
@@ -85,7 +85,9 @@ def make_tropo(da):
 
 def check_plev_units(da):
     if "units" not in da.plev.attrs:
-        warnings.warn("No units found for input vertical coordinate. Assuming Pa.")
+        warnings.warn(
+            "No units found for input vertical coordinate. Assuming Pa.", stacklevel=2
+        )
         plev = da.plev.assign_attrs({"units": "Pa"})
         return da.assign_coords({"plev": plev})
     elif da.plev.units in ["hPa", "mb", "millibars"]:
@@ -98,7 +100,9 @@ def check_plev_units(da):
 
 def check_pres_units(da, var_name):
     if "units" not in da.attrs:
-        warnings.warn("Could not determine units of " + var_name + ". Assuming Pa.")
+        warnings.warn(
+            "Could not determine units of " + var_name + ". Assuming Pa.", stacklevel=2
+        )
         return da.assign_attrs({"units": "Pa"})
     elif da.units in ["hPa", "mb", "millibars"]:
         da = da * 100
@@ -137,7 +141,7 @@ def get_kern(name, loc="TOA"):
 
 
 def make_clim(da):
-    "Produce monthly climatology of model field."
+    """Produce monthly climatology of model field."""
     try:
         clim = (
             da.groupby(da.time.dt.month)
@@ -179,7 +183,8 @@ def __calc_qs__(temp):
     else:
         warnings.warn(
             "Cannot determine units of pressure \
-        coordinate. Assuming units are Pa."
+        coordinate. Assuming units are Pa.",
+            stacklevel=2,
         )
         pres = temp.plev / 100
 
@@ -192,7 +197,8 @@ def __calc_qs__(temp):
     else:
         warnings.warn(
             "Warning: Cannot determine units of temperature. \
-        Assuming Kelvin."
+        Assuming Kelvin.",
+            stacklevel=2,
         )
         temp_c = temp - 273.15
         temp_c.attrs = temp.attrs
@@ -302,12 +308,12 @@ def check_coords(ds, ndim=3):
         if "plev" in ds.dims:
             pass
         else:
-            bool = False
+            found = False
             for n in ["lev", "player", "level"]:
                 if n in ds.dims:
                     ds = ds.rename({n: "plev"})
-                    bool = True
-            if bool is False:
+                    found = True
+            if found is False:
                 raise AttributeError(
                     "Cannot find the name of the pressure\
                 coordinate. Please rename it to 'plev'."

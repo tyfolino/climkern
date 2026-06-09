@@ -7,7 +7,7 @@ name = "climkern"
 dynamic = ["version"]
 description = "Python package for easily computing climate feedbacks using radiative kernels."
 readme = "README.md"
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -24,10 +24,11 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
 ]
 dependencies = [
@@ -54,7 +55,7 @@ test = [
 ]
 
 lint = [
-    "pre-commit>=2.20.0",
+    "pre-commit>=3.5",
 ]
 
 # Version is derived from git tags (no hardcoded number to bump)
@@ -66,14 +67,12 @@ version_file = "climkern/_version.py"
 include = ["climkern*"]
 
 # tools
-[tool.black]
-line-length = 88
-target-version = ["py39","py310", "py311", "py312"]
-
-# https://github.com/charliermarsh/ruff
+# https://docs.astral.sh/ruff/ — Ruff handles both linting and formatting.
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py310"
+
+[tool.ruff.lint]
 extend-select = [
     "E",      # style errors
     "F",      # flakes
@@ -84,6 +83,7 @@ extend-select = [
     "C",      # flake8-comprehensions
     "B",      # flake8-bugbear
     "A001",   # flake8-builtins
+    "NPY",    # NumPy-specific rules (incl. NumPy 2.0 migration)
     "RUF",    # ruff-specific rules
     "RUF100", # Unused noqa directive
 ]
@@ -98,5 +98,23 @@ extend-ignore = [
     "D213", # Multi-line docstring summary should start at the second line
     "D413", # Missing blank line after last section
     "D416", # Section name should end with a colon
+    "D417", # Missing argument description (docstrings are not mandatory here)
+    # Climate-science code uses domain-standard uppercase names (T, TS, SWup,
+    # FSNT, ...). Allow them, consistent with the N806 exception below.
+    "N802", # Function name should be lowercase
+    "N803", # Argument name should be lowercase
     "N806", # Variable in function should be lowercase
+    "N807", # Function name should not start/end with __ (private helpers)
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Sphinx requires the module-level `copyright` variable name.
+"docs/source/conf.py" = ["A001"]
+
+# Black-compatible defaults; declared explicitly for clarity.
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true  # xesmf / xarray / etc. ship no type stubs

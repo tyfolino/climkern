@@ -32,15 +32,15 @@ Finally, install ClimKern with [pip](https://pip.pypa.io/en/stable/#):
 
 `pip install climkern`
 
-Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10223376). These kernels (and tutorial data) are stored separately because of PyPI size limitations. You can download the kernels easily using the download script included in the package:  
+Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10223376). These kernels (and tutorial data) are stored separately because of PyPI size limitations. You can download the kernels easily using the download script included in the package:
 
 `python -m climkern download`
 
 Note: The kernels & tutorial data are approximately 5 GB.
 
-> **IMPORTANT:** SSL Certificate Errors  
-> It is possible to get an SSL certificate error when trying to run the download script. You may try updating your certificate authorities with `pip install --upgrade certifi`.  
->  
+> **IMPORTANT:** SSL Certificate Errors
+> It is possible to get an SSL certificate error when trying to run the download script. You may try updating your certificate authorities with `pip install --upgrade certifi`.
+>
 > If that does not work, you can manually download the `data.zip` file from Zenodo and unzip it in your ClimKern package directory.
 
 
@@ -85,7 +85,7 @@ print("The global average Planck feedback is {val:.2f} W/m^2/K.".format(
 ```
 Expected result with the GFDL kernel:
 > `The global average lapse rate feedback is -0.41 W/m^2/K.`
-> 
+>
 > `The global average Planck feedback is -3.12 W/m^2/K.`
 
 The water vapor and surface albedo feedbacks are calculated similarly:
@@ -199,4 +199,3 @@ Janoski, T. P., Mitevski, I., Kramer, R. J., Previdi, M., & Polvani, L. M. (2025
 </details>
 
 If you are citing the software itself (e.g., for reproducibility), use the citation metadata included in our [`CITATION.cff`](CITATION.cff) file. GitHub also provides downloadable citation formats via the "Cite this repository" button on the right-hand sidebar.
-
