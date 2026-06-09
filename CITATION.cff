@@ -33,6 +33,11 @@ contributors:
     affiliation: "Department of Meteorology (MISU), Stockholm University, Stockholm, Sweden"
     orcid: "0000-0002-5286-2185"
     alias: "olinke95"
+  - family-names: "Kawaguchi"
+    given-names: "Koh"
+    affiliation: "Imperial College London, London, UK"
+    orcid: "0000-0002-9438-3895"
+    alias: "kkawaguc"
 
 preferred-citation:
   type: article
