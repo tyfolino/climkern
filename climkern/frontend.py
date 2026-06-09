@@ -7,10 +7,25 @@ import xesmf as xe
 from importlib_resources import files
 from xarray import DataArray
 
-from .util import *
+from .util import (
+    calc_q_norm,
+    check_coords,
+    check_plev,
+    check_plev_units,
+    check_pres_units,
+    check_sky,
+    check_var_units,
+    custom_formatwarning,
+    get_albedo,
+    get_dp,
+    get_kern,
+    make_clim,
+    make_tropo,
+    tile_data,
+)
 
 # change warning format
-warnings.formatwarning = custom_formatwarning
+warnings.formatwarning = custom_formatwarning  # type: ignore[assignment]
 
 # Apply warning filter to prevent xarray renaming warming
 # Ideally, this will be removed in the future
@@ -209,7 +224,7 @@ def calc_T_feedbacks(
     pert_ps = check_pres_units(pert_ps, "pert PS")
 
     # check tropopause units if provided by user, else create dummy tropopause
-    if type(pert_trop) == type(None):
+    if pert_trop is None:
         pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
@@ -359,6 +374,7 @@ def calc_q_feedbacks(
             + ' from future versions of ClimKern. Please use "1", '
             + '"2", "3", or "4" instead.',
             FutureWarning,
+            stacklevel=2,
         )
         mapping = {"pendergrass": 3, "kramer": 2, "zelinka": 1, "linear": 4}
         method = mapping[method]
@@ -381,7 +397,7 @@ def calc_q_feedbacks(
     pert_ps = check_pres_units(pert_ps, "pert PS")
 
     # check tropopause units if provided by user, else create dummy tropopause
-    if type(pert_trop) == type(None):
+    if pert_trop is None:
         pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
@@ -401,7 +417,7 @@ def calc_q_feedbacks(
     elif ctrl_q.units in ["g/kg"]:
         conv_factor = 1
     else:
-        warnings.warn("Cannot determine units of q. Assuming kg/kg.")
+        warnings.warn("Cannot determine units of q. Assuming kg/kg.", stacklevel=2)
         conv_factor = 1000
 
     # tile control climatology to match length of pert simulation time dim
@@ -878,7 +894,7 @@ def calc_strato_T(
     pert_ps = check_pres_units(pert_ps, "pert PS")
 
     # check tropopause units if provided by user, else create dummy tropopause
-    if type(pert_trop) == type(None):
+    if pert_trop is None:
         pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
@@ -999,6 +1015,7 @@ def calc_strato_q(
             + ' from future versions of ClimKern. Please use "1", '
             + '"2", "3", or "4" instead.',
             FutureWarning,
+            stacklevel=2,
         )
         mapping = {"pendergrass": 3, "kramer": 2, "zelinka": 1, "linear": 4}
         method = mapping[method]
@@ -1020,7 +1037,7 @@ def calc_strato_q(
     pert_ps = check_pres_units(pert_ps, "pert PS")
 
     # check tropopause units if provided by user, else create dummy tropopause
-    if type(pert_trop) == type(None):
+    if pert_trop is None:
         pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
@@ -1037,7 +1054,7 @@ def calc_strato_q(
     elif ctrl_q.units in ["g/kg"]:
         conv_factor = 1
     else:
-        warnings.warn("Cannot determine units of q. Assuming kg/kg.")
+        warnings.warn("Cannot determine units of q. Assuming kg/kg.", stacklevel=2)
         conv_factor = 1000
 
     # tile control climatology to match length of pert simulation time dim
@@ -1186,6 +1203,7 @@ def calc_RH_feedback(
             + ' from future versions of ClimKern. Please use "1", '
             + '"2", "3", or "4" instead.',
             FutureWarning,
+            stacklevel=2,
         )
         mapping = {"pendergrass": 3, "kramer": 2, "zelinka": 1, "linear": 4}
         method = mapping[method]
@@ -1211,7 +1229,7 @@ def calc_RH_feedback(
     pert_ps = check_pres_units(pert_ps, "pert PS")
 
     # check tropopause units if provided by user, else create dummy tropopause
-    if type(pert_trop) == type(None):
+    if pert_trop is None:
         pert_trop = make_tropo(pert_ps)
     else:
         pert_trop = check_coords(pert_trop)
@@ -1231,7 +1249,7 @@ def calc_RH_feedback(
     elif ctrl_q.units in ["g/kg"]:
         conv_factor = 1
     else:
-        warnings.warn("Cannot determine units of q. Assuming kg/kg.")
+        warnings.warn("Cannot determine units of q. Assuming kg/kg.", stacklevel=2)
         conv_factor = 1000
 
     # tile control climatology to match length of pert simulation time dim

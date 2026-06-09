@@ -1,6 +1,11 @@
 import xarray as xr
 
-from climkern.frontend import *
+from climkern.frontend import (
+    calc_alb_feedback,
+    calc_q_feedbacks,
+    calc_T_feedbacks,
+    spat_avg,
+)
 
 
 def test_calc_T_feedbacks(

@@ -12,7 +12,7 @@
 6. [Submit a pull request (PR) to the `dev` branch.](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
 
 ## 3. Coding Guidelines
-ClimKern uses automated tooling to ensure a consistent style, including the [Black](https://github.com/psf/black) formatter, [Ruff](https://github.com/astral-sh/ruff) linter, and [MyPy](https://mypy.readthedocs.io/en/stable/) type checker. These are configured in `pyproject.toml` and can be run automatically with `pre-commit`.
+ClimKern uses [Ruff](https://github.com/astral-sh/ruff) for both linting and formatting, configured in `pyproject.toml` and run via [`pre-commit`](https://pre-commit.com). ([MyPy](https://mypy.readthedocs.io/en/stable/) is also wired up for optional local type checking.) Linting and formatting are **enforced in CI**: the `Lint` workflow runs on every pull request and will fail if your code is not formatted, so please install and run the hooks before pushing.
 
 ```bash
 # Install pre-commit
