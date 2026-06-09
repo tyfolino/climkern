@@ -1,0 +1,96 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Bump the suffix to force a re-download if the Zenodo archive changes.
+env:
+  DATA_CACHE_KEY: climkern-data-zenodo-10223376-v2
+
+jobs:
+  # Download the ~5 GB kernel + tutorial datasets from Zenodo exactly once and
+  # store them in the Actions cache. The test matrix restores from this cache
+  # instead of each job hammering Zenodo.
+  prepare-data:
+    name: Fetch kernel & tutorial data
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Cache data
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: climkern/data
+          key: ${{ env.DATA_CACHE_KEY }}
+
+      - name: Set up conda environment
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-file: ci/environment.yml
+          cache-environment: true
+
+      - name: Download data
+        if: steps.cache.outputs.cache-hit != 'true'
+        # not shipped in the package; fetched from Zenodo into climkern/data/
+        run: |
+          python -m pip install --no-deps -e .
+          python -m climkern download
+
+  test:
+    name: pytest (py${{ matrix.python-version }})
+    needs: prepare-data
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # login shell is required so the micromamba env is activated
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          # full history + tags so setuptools-scm can derive the version
+          fetch-depth: 0
+
+      - name: Restore data cache
+        id: data
+        uses: actions/cache/restore@v4
+        with:
+          path: climkern/data
+          key: ${{ env.DATA_CACHE_KEY }}
+
+      - name: Set up conda environment
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-file: ci/environment.yml
+          cache-environment: true
+          create-args: >-
+            python=${{ matrix.python-version }}
+            pytest
+
+      - name: Install climkern
+        run: python -m pip install --no-deps -e .
+
+      - name: Download data (fallback if cache missed)
+        if: steps.data.outputs.cache-hit != 'true'
+        run: python -m climkern download
+
+      - name: Run tests
+        run: pytest -v climkern/tests

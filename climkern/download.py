@@ -17,7 +17,9 @@ def download():
         known_hash=None,
         fname=fname,
         path=path,
-        processor=Unzip(extract_dir="data"),
+        # the archive already contains a top-level "data/" folder, so extract
+        # at the package root to land files at climkern/data/ (not data/data/)
+        processor=Unzip(extract_dir="."),
         progressbar=True,
     )
 
