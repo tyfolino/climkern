@@ -1,12 +1,17 @@
 name: Deploy Sphinx documentation to Pages
 
-on: push
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
 
 jobs:
   pages:
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
+      # only engage the github-pages environment when we actually deploy (main),
+      # so dev/PR build-check runs don't trip its deployment-branch protection
+      name: ${{ github.ref == 'refs/heads/main' && 'github-pages' || '' }}
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
@@ -36,3 +41,6 @@ jobs:
           # errors so a broken build fails instead of silently deploying
           # empty pages. --keep-going reports all warnings before failing.
           sphinx_build_options: -W --keep-going
+          # build everywhere (catches breakage on dev/PRs), but only the
+          # stable main branch publishes to the live site
+          publish: ${{ github.ref == 'refs/heads/main' }}
