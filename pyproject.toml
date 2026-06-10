@@ -36,7 +36,9 @@ dependencies = [
     "cf-xarray>=0.5.1",
     "cftime",
     "xesmf>=0.7.1",
-    "importlib_resources",
+    "fsspec[http]",
+    "h5netcdf",
+    "h5py",
     "pooch",
     "tqdm",
     "plac",
@@ -66,9 +68,10 @@ version_file = "climkern/_version.py"
 [tool.setuptools.packages.find]
 include = ["climkern*"]
 
-# Ship type information to downstream users (PEP 561).
+# Ship type information (PEP 561) and the data registry (pooch hashes for the
+# kernels/tutorial files streamed from Jetstream2) to downstream users.
 [tool.setuptools.package-data]
-climkern = ["py.typed"]
+climkern = ["py.typed", "registry.txt"]
 
 # tools
 # https://docs.astral.sh/ruff/ — Ruff handles both linting and formatting.
