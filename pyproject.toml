@@ -66,6 +66,10 @@ version_file = "climkern/_version.py"
 [tool.setuptools.packages.find]
 include = ["climkern*"]
 
+# Ship type information to downstream users (PEP 561).
+[tool.setuptools.package-data]
+climkern = ["py.typed"]
+
 # tools
 # https://docs.astral.sh/ruff/ — Ruff handles both linting and formatting.
 [tool.ruff]
@@ -117,4 +121,7 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.10"
-ignore_missing_imports = true  # xesmf / xarray / etc. ship no type stubs
+ignore_missing_imports = true  # xesmf ships no type stubs (xarray does)
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
