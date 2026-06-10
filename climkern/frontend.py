@@ -123,17 +123,17 @@ def calc_alb_feedback(
 
 
 def calc_T_feedbacks(
-    ctrl_ta,
-    ctrl_ts,
-    ctrl_ps,
-    pert_ta,
-    pert_ts,
-    pert_ps,
-    pert_trop=None,
-    kern="GFDL",
-    sky="all-sky",
-    fixRH=False,
-):
+    ctrl_ta: DataArray,
+    ctrl_ts: DataArray,
+    ctrl_ps: DataArray,
+    pert_ta: DataArray,
+    pert_ts: DataArray,
+    pert_ps: DataArray,
+    pert_trop: DataArray | None = None,
+    kern: str = "GFDL",
+    sky: str = "all-sky",
+    fixRH: bool = False,
+) -> tuple[DataArray, DataArray]:
     """
     Calculate the raditive pertubations (W/m^2) at the TOA from changes in
     surface skin and air temperature using user-specified kernel. Horizontal
@@ -288,17 +288,17 @@ def calc_T_feedbacks(
 
 
 def calc_q_feedbacks(
-    ctrl_q,
-    ctrl_ta,
-    ctrl_ps,
-    pert_q,
-    pert_ps,
-    pert_trop=None,
-    kern="GFDL",
-    sky="all-sky",
-    loc="TOA",
-    method=1,
-):
+    ctrl_q: DataArray,
+    ctrl_ta: DataArray,
+    ctrl_ps: DataArray,
+    pert_q: DataArray,
+    pert_ps: DataArray,
+    pert_trop: DataArray | None = None,
+    kern: str = "GFDL",
+    sky: str = "all-sky",
+    loc: str = "TOA",
+    method: int | str = 1,
+) -> tuple[DataArray, DataArray]:
     """
     Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA or surface from
     changes in specific humidity using user-specified kernel. Horizontal
@@ -494,7 +494,12 @@ def calc_q_feedbacks(
     return (qlw_feedback, qsw_feedback)
 
 
-def calc_dCRE_SW(ctrl_FSNT, pert_FSNT, ctrl_FSNTC, pert_FSNTC):
+def calc_dCRE_SW(
+    ctrl_FSNT: DataArray,
+    pert_FSNT: DataArray,
+    ctrl_FSNTC: DataArray,
+    pert_FSNTC: DataArray,
+) -> DataArray:
     """
     Calculate the change in the SW cloud radiative effect at the TOA.
 
@@ -544,7 +549,12 @@ def calc_dCRE_SW(ctrl_FSNT, pert_FSNT, ctrl_FSNTC, pert_FSNTC):
     return pert_CRE_SW - ctrl_CRE_SW_tiled
 
 
-def calc_dCRE_LW(ctrl_FLNT, pert_FLNT, ctrl_FLNTC, pert_FLNTC):
+def calc_dCRE_LW(
+    ctrl_FLNT: DataArray,
+    pert_FLNT: DataArray,
+    ctrl_FLNTC: DataArray,
+    pert_FLNTC: DataArray,
+) -> DataArray:
     """
     Calculate the change in the LW cloud radiative effect at the TOA.
 
@@ -594,7 +604,15 @@ def calc_dCRE_LW(ctrl_FLNT, pert_FLNT, ctrl_FLNTC, pert_FLNTC):
     return pert_CRE_LW - ctrl_CRE_LW_tiled
 
 
-def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=None):
+def calc_cloud_LW(
+    t_as: DataArray,
+    t_cs: DataArray,
+    q_lwas: DataArray,
+    q_lwcs: DataArray,
+    dCRE_lw: DataArray,
+    rf_lwas: DataArray | None = None,
+    rf_lwcs: DataArray | None = None,
+) -> DataArray:
     """
     Calculate the radiative perturbation from the longwave cloud feedback
     using the adjustment method outlined in Soden et al. (2008).
@@ -651,7 +669,8 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=Non
     # Check to make sure that either both or neither of rfs were provided
     if (rf_lwas is None) != (rf_lwcs is None):
         raise ValueError("Either both or neither of rf_lw terms must be specified.")
-    elif rf_lwas is None and rf_lwcs is None:
+    # The check above rules out exactly-one-None, so if either is None both are.
+    if rf_lwas is None or rf_lwcs is None:
         rf_lwas = xr.zeros_like(dq_lw)
         rf_lwcs = xr.zeros_like(dq_lw)
 
@@ -669,7 +688,15 @@ def calc_cloud_LW(t_as, t_cs, q_lwas, q_lwcs, dCRE_lw, rf_lwas=None, rf_lwcs=Non
     return lw_cld_feedback
 
 
-def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=None, rf_swcs=None):
+def calc_cloud_SW(
+    alb_as: DataArray,
+    alb_cs: DataArray,
+    q_swas: DataArray,
+    q_swcs: DataArray,
+    dCRE_sw: DataArray,
+    rf_swas: DataArray | None = None,
+    rf_swcs: DataArray | None = None,
+) -> DataArray:
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the adjustment method outlined in Soden et al. (2008).
@@ -724,7 +751,8 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=None, rf_swcs
     # Check to make sure that either both or neither of rfs were provided
     if (rf_swas is None) != (rf_swcs is None):
         raise ValueError("Either both or neither of rf_sw terms must be specified.")
-    elif rf_swas is None and rf_swcs is None:
+    # The check above rules out exactly-one-None, so if either is None both are.
+    if rf_swas is None or rf_swcs is None:
         rf_swas = xr.zeros_like(dq_sw)
         rf_swcs = xr.zeros_like(dq_sw)
 
@@ -740,7 +768,13 @@ def calc_cloud_SW(alb_as, alb_cs, q_swas, q_swcs, dCRE_sw, rf_swas=None, rf_swcs
     return sw_cld_feedback
 
 
-def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
+def calc_cloud_LW_res(
+    ctrl_FLNT: DataArray,
+    pert_FLNT: DataArray,
+    t_lw: DataArray,
+    q_lw: DataArray,
+    rf_lw: DataArray | None = None,
+) -> DataArray:
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
@@ -795,7 +829,13 @@ def calc_cloud_LW_res(ctrl_FLNT, pert_FLNT, t_lw, q_lw, rf_lw=None):
     return lw_cld_feedback
 
 
-def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=None):
+def calc_cloud_SW_res(
+    ctrl_FSNT: DataArray,
+    pert_FSNT: DataArray,
+    q_sw: DataArray,
+    alb_sw: DataArray,
+    rf_sw: DataArray | None = None,
+) -> DataArray:
     """
     Calculate the radiative perturbation from the shortwave cloud feedback
     using the residual method outlined in Soden & Held (2006).
@@ -847,8 +887,13 @@ def calc_cloud_SW_res(ctrl_FSNT, pert_FSNT, q_sw, alb_sw, rf_sw=None):
 
 
 def calc_strato_T(
-    ctrl_ta, pert_ta, pert_ps, pert_trop=None, kern="GFDL", sky="all-sky"
-):
+    ctrl_ta: DataArray,
+    pert_ta: DataArray,
+    pert_ps: DataArray,
+    pert_trop: DataArray | None = None,
+    kern: str = "GFDL",
+    sky: str = "all-sky",
+) -> DataArray:
     """
     Calculate the raditive pertubations (W/m^2) at the TOA from changes in
     statosphere air temperature using user-specified kernel. Horizontal
@@ -944,15 +989,15 @@ def calc_strato_T(
 
 
 def calc_strato_q(
-    ctrl_q,
-    ctrl_ta,
-    pert_q,
-    pert_ps,
-    pert_trop=None,
-    kern="GFDL",
-    sky="all-sky",
-    method=1,
-):
+    ctrl_q: DataArray,
+    ctrl_ta: DataArray,
+    pert_q: DataArray,
+    pert_ps: DataArray,
+    pert_trop: DataArray | None = None,
+    kern: str = "GFDL",
+    sky: str = "all-sky",
+    method: int | str = 1,
+) -> tuple[DataArray, DataArray]:
     """
     Calculate the raditive pertubations (W/m^2), LW & SW, at the TOA from
     changes in stratospheric specific humidity using user-specified kernel.
@@ -1130,17 +1175,17 @@ def calc_strato_q(
 
 
 def calc_RH_feedback(
-    ctrl_q,
-    ctrl_ta,
-    ctrl_ps,
-    pert_q,
-    pert_ta,
-    pert_ps,
-    pert_trop=None,
-    kern="GFDL",
-    sky="all-sky",
-    method=1,
-):
+    ctrl_q: DataArray,
+    ctrl_ta: DataArray,
+    ctrl_ps: DataArray,
+    pert_q: DataArray,
+    pert_ta: DataArray,
+    pert_ps: DataArray,
+    pert_trop: DataArray | None = None,
+    kern: str = "GFDL",
+    sky: str = "all-sky",
+    method: int | str = 1,
+) -> DataArray:
     """
     Calculate the TOA radiative perturbations from changes in relative
     humidity following Held & Shell (2012). Horizontal resolution is
@@ -1323,7 +1368,7 @@ def calc_RH_feedback(
     return RH_feedback
 
 
-def tutorial_data(label):
+def tutorial_data(label: str) -> xr.Dataset:
     """
     Retrieve tutorial data which should be located in the package's
     "data" folder.
@@ -1348,7 +1393,9 @@ def tutorial_data(label):
     return data
 
 
-def spat_avg(data, lat_bound_s=-90, lat_bound_n=90):
+def spat_avg(
+    data: DataArray, lat_bound_s: float = -90, lat_bound_n: float = 90
+) -> DataArray:
     """
     Compute the spatial average while weighting for cos(latitude), optionally
     specifying latitudinal boundaries.

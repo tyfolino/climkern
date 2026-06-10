@@ -7,7 +7,7 @@ from pooch import Unzip, retrieve
 import climkern as ck  # if this doesn't work, it's probably the wrong env
 
 
-def download():
+def download() -> None:
     # get path of climkern package
     path = ck.__file__.replace("/__init__.py", "")
     fname = "data.zip"  # name of file to save before unzipping
