@@ -1,4 +1,6 @@
 # import required packages
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
@@ -1377,7 +1379,7 @@ def tutorial_data(label: str) -> xr.Dataset:
     ----------
     label : string
         Specifies which data to access. Choices are "ctrl", "pert", "IRF", "adjRF",
-         or "ERF" for the 1xCO2, 2xCO2, instantaneous radiative forcing,
+        or "ERF" for the 1xCO2, 2xCO2, instantaneous radiative forcing,
         stratosphere-adjusted radiative forcing, and effective radiative forcing,
         respectively.
 
