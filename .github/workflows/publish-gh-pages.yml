@@ -32,3 +32,7 @@ jobs:
         uses: sphinx-notes/pages@v3
         with:
           documentation_path: ./docs/source
+          # Treat warnings (e.g. autodoc failing to import the package) as
+          # errors so a broken build fails instead of silently deploying
+          # empty pages. --keep-going reports all warnings before failing.
+          sphinx_build_options: -W --keep-going
