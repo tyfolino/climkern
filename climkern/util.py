@@ -1,12 +1,21 @@
 import warnings
+from typing import TypeVar
 
 import numpy as np
 import xarray as xr
 from importlib_resources import files
 
+# Generic over the two xarray container types, used by functions (e.g.
+# check_coords) that accept either a DataArray or a Dataset and return the
+# same type they were given. Defined here as the single source of truth;
+# frontend.py imports it for consistency.
+XrObj = TypeVar("XrObj", xr.DataArray, xr.Dataset)
+
 
 # monkey patch Python warnings format function
-def custom_formatwarning(msg, cat, *args, **kwargs):
+def custom_formatwarning(
+    msg: object, cat: type[Warning], *args: object, **kwargs: object
+) -> str:
     return str(cat.__name__) + ": " + str(msg) + "\n"
 
 
@@ -17,7 +26,12 @@ warnings.formatwarning = custom_formatwarning  # type: ignore[assignment]
 warnings.filterwarnings("ignore", ".*does not create an index anymore.*")
 
 
-def get_dp(ds_4D, ps, tropo, layer="troposphere"):
+def get_dp(
+    ds_4D: xr.DataArray,
+    ps: xr.DataArray,
+    tropo: xr.DataArray,
+    layer: str = "troposphere",
+) -> xr.DataArray:
     """Calculate layer thickness using model pressure levels, surface
     pressure, and tropopause pressure. Also specify the layer as either
     'troposphere' or 'stratosphere'.
@@ -62,7 +76,7 @@ def get_dp(ds_4D, ps, tropo, layer="troposphere"):
     return dp
 
 
-def check_var_units(da, var):
+def check_var_units(da: xr.DataArray, var: str) -> xr.DataArray:
     """Check to see if the xarray DataArray has a units attribute."""
     if "units" not in da.attrs:
         if var == "q":
@@ -71,11 +85,12 @@ def check_var_units(da, var):
         elif var == "T":
             warnings.warn("No units found for input T. Assuming K.", stacklevel=2)
             return da.assign_attrs({"units": "K"})
-    else:
-        return da
+    # Either units are already present, or we have no default to assume for
+    # this variable, so pass the DataArray through unchanged.
+    return da
 
 
-def make_tropo(da):
+def make_tropo(da: xr.DataArray) -> xr.DataArray:
     """Use the a DataArray containing model lat and lon to make a makeshift
     tropopause.
     """
@@ -83,7 +98,7 @@ def make_tropo(da):
     return tropo
 
 
-def check_plev_units(da):
+def check_plev_units(da: xr.DataArray) -> xr.DataArray:
     if "units" not in da.plev.attrs:
         warnings.warn(
             "No units found for input vertical coordinate. Assuming Pa.", stacklevel=2
@@ -98,7 +113,7 @@ def check_plev_units(da):
         return da
 
 
-def check_pres_units(da, var_name):
+def check_pres_units(da: xr.DataArray, var_name: str) -> xr.DataArray:
     if "units" not in da.attrs:
         warnings.warn(
             "Could not determine units of " + var_name + ". Assuming Pa.", stacklevel=2
@@ -112,7 +127,7 @@ def check_pres_units(da, var_name):
         return da
 
 
-def tile_data(to_tile, new_shape):
+def tile_data(to_tile: xr.DataArray, new_shape: xr.DataArray) -> xr.DataArray:
     """Tile dataset along time axis to match another dataset."""
     # new_shape = _check_time(new_shape)
     if len(new_shape.time) % 12 != 0:
@@ -130,7 +145,7 @@ def tile_data(to_tile, new_shape):
     return tiled
 
 
-def get_kern(name, loc="TOA"):
+def get_kern(name: str, loc: str = "TOA") -> xr.Dataset:
     """Read in kernel from local directory."""
     path = "data/kernels/" + name + "/" + loc + "_" + str(name) + "_Kerns.nc"
     try:
@@ -140,7 +155,7 @@ def get_kern(name, loc="TOA"):
     return check_coords(data)
 
 
-def make_clim(da):
+def make_clim(da: xr.DataArray) -> xr.DataArray:
     """Produce monthly climatology of model field."""
     try:
         clim = (
@@ -154,7 +169,7 @@ def make_clim(da):
     return clim
 
 
-def get_albedo(SWup, SWdown):
+def get_albedo(SWup: xr.DataArray, SWdown: xr.DataArray) -> xr.DataArray:
     """Calculate the surface albedo as the ratio of upward to
     downward sfc shortwave.
     """
@@ -162,7 +177,7 @@ def get_albedo(SWup, SWdown):
     return (SWup / SWdown.where(SWdown > 0)).fillna(0)
 
 
-def check_plev(kern):
+def check_plev(kern: xr.Dataset) -> xr.Dataset:
     """Make sure the vertical pressure units of the kernel are in Pa."""
     if kern.plev.units != "Pa":
         kern["plev"] = kern.plev * 100
@@ -172,7 +187,7 @@ def check_plev(kern):
     return kern
 
 
-def __calc_qs__(temp):
+def __calc_qs__(temp: xr.DataArray) -> xr.DataArray:
     """Calculate the saturated specific humidity
     given temperature and pressure.
     """
@@ -229,7 +244,9 @@ def __calc_qs__(temp):
     return qs
 
 
-def calc_q_norm(ctrl_ta, ctrl_q, method):
+def calc_q_norm(
+    ctrl_ta: xr.DataArray, ctrl_q: xr.DataArray, method: int
+) -> xr.DataArray:
     """Calculate the change in specific humidity for 1K warming
     assuming fixed relative humidity.
     """
@@ -267,8 +284,11 @@ def calc_q_norm(ctrl_ta, ctrl_q, method):
         dlogqdT = 1000 * (np.log(qs1K.where(qs1K > 0)) - np.log(qs0.where(qs0 > 0)))
         return dlogqdT
 
+    else:
+        raise ValueError("Please select a valid choice for the method argument.")
 
-def check_sky(sky):
+
+def check_sky(sky: str) -> str:
     """Make sure the sky argument is either all-sky or clear-sky."""
     if sky not in ["all-sky", "clear-sky"]:
         raise ValueError("The sky argument must either be all-sky or clear-sky.")
@@ -276,7 +296,7 @@ def check_sky(sky):
         return sky
 
 
-def check_coords(ds, ndim=3):
+def check_coords(ds: XrObj, ndim: int = 3) -> XrObj:
     """Universal function to check that dataset coordinates are in line with
     what the package requires.
     """
