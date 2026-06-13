@@ -15,7 +15,7 @@ ZENODO_ZIP_HASH = "md5:e11bf7530ea17c1404b1fa97a50bfdaa"
 
 
 def download() -> None:
-    """Download the full kernel + tutorial dataset into the climkern cache.
+    """Download the full kernel + tutorial dataset into the ClimKern cache.
 
     This is the optional "grab everything" path: it pulls the ~5 GB archive
     from Zenodo and unpacks it into the same cache directory used for on-demand
