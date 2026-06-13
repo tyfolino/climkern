@@ -6,10 +6,10 @@ import warnings
 import numpy as np
 import xarray as xr
 import xesmf as xe
-from importlib_resources import files
 from xarray import DataArray
 
 from .util import (
+    _open_dataset,
     calc_q_norm,
     check_coords,
     check_plev,
@@ -1390,9 +1390,7 @@ def tutorial_data(label: str) -> xr.Dataset:
     """
     if label not in ["ctrl", "pert", "IRF", "adjRF", "ERF"]:
         raise ValueError("Invalid data name. See docstring for options.")
-    path = "data/tutorial_data/" + label + ".nc"
-    data = xr.open_dataset(files("climkern").joinpath(path))
-    return data
+    return _open_dataset(f"tutorial_data/{label}.nc")
 
 
 def spat_avg(
