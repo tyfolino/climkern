@@ -60,22 +60,27 @@ class set_options:  # noqa: N801 (lowercase mirrors xarray.set_options, a public
     Parameters
     ----------
     data_source : {"cache", "stream", "local"}, optional
-        Where to read kernels and tutorial data.
-        - ``"cache"`` (default): download each file from Jetstream2 on first
-          use into a local cache, then reuse the cached copy. Files are
-          verified against shipped hashes, so a corrected kernel in a new
-          ClimKern release is re-downloaded automatically.
-        - ``"stream"``: read directly from Jetstream2 without writing anything
-          to disk.
-        - ``"local"``: only use files already present on disk (from a prior
-          cache fetch or ``download()``); never access the network.
+        Where to read kernels and tutorial data (see Notes). Default ``"cache"``.
     cache_dir : str or os.PathLike, optional
-        Override the cache location. Defaults to ``pooch.os_cache("ClimKern")``
-        (e.g. ``~/.cache/ClimKern`` on Linux), or the ``CLIMKERN_DATA_DIR``
+        Override the cache location. Defaults to ``pooch.os_cache("climkern")``
+        (e.g. ``~/.cache/climkern`` on Linux), or the ``CLIMKERN_DATA_DIR``
         environment variable if set.
     version_check : bool, optional
         Whether to warn, once per session, when a newer kernel data release is
         available on Zenodo. Default ``True``.
+
+    Notes
+    -----
+    The ``data_source`` modes are:
+
+    - ``"cache"`` (default): download each file from Jetstream2 on first use
+      into a local cache, then reuse the cached copy. Files are verified against
+      shipped hashes, so a corrected kernel in a new ClimKern release is
+      re-downloaded automatically.
+    - ``"stream"``: read directly from Jetstream2 without writing anything to
+      disk.
+    - ``"local"``: only use files already present on disk (from a prior cache
+      fetch or ``download()``); never access the network.
 
     Examples
     --------
