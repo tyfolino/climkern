@@ -10,6 +10,9 @@ dependencies:
   - cftime
   - pooch
   - tqdm
-  - importlib-resources
+  - fsspec
+  - aiohttp
+  - h5netcdf
+  - h5py
   - plac
   - netcdf4
