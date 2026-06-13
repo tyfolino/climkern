@@ -179,11 +179,13 @@ _REGISTRY = _load_registry()
 
 def _pooch() -> pooch.Pooch:
     """Build a pooch fetcher pointed at the current cache dir and Jetstream2."""
+    # No env= here: _cache_root() already resolves CLIMKERN_DATA_DIR and the
+    # set_options(cache_dir=...) override into the path. Passing env= would let
+    # the environment variable silently override an explicit cache_dir.
     return pooch.create(
         path=_cache_root(),
         base_url=JS2_HTTPS_BASE,
         registry=_REGISTRY or None,
-        env="CLIMKERN_DATA_DIR",
     )
 
 
