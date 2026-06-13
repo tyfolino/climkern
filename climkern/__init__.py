@@ -17,6 +17,7 @@ from .frontend import (
     spat_avg,
     tutorial_data,
 )
+from .options import set_options
 
 __all__ = [
     "calc_RH_feedback",
@@ -31,6 +32,7 @@ __all__ = [
     "calc_q_feedbacks",
     "calc_strato_T",
     "calc_strato_q",
+    "set_options",
     "spat_avg",
     "tutorial_data",
     "util",
