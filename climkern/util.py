@@ -1,9 +1,15 @@
+import json
+import urllib.request
 import warnings
+from importlib.resources import files
+from pathlib import Path
 from typing import TypeVar
 
 import numpy as np
+import pooch
 import xarray as xr
-from importlib_resources import files
+
+from .options import DATA_VERSION, JS2_HTTPS_BASE, OPTIONS, ZENODO_CONCEPT_ID
 
 # Generic over the two xarray container types, used by functions (e.g.
 # check_coords) that accept either a DataArray or a Dataset and return the
@@ -145,13 +151,137 @@ def tile_data(to_tile: xr.DataArray, new_shape: xr.DataArray) -> xr.DataArray:
     return tiled
 
 
-def get_kern(name: str, loc: str = "TOA") -> xr.Dataset:
-    """Read in kernel from local directory."""
-    path = "data/kernels/" + name + "/" + loc + "_" + str(name) + "_Kerns.nc"
+def _cache_root() -> Path:
+    """Directory where cached/downloaded kernel and tutorial data live."""
+    if OPTIONS["cache_dir"]:
+        return Path(OPTIONS["cache_dir"])
+    return Path(pooch.os_cache("climkern"))
+
+
+def _load_registry() -> dict[str, str]:
+    """Parse the shipped pooch registry (relpath -> hash). Empty if absent."""
+    path = files("climkern").joinpath("registry.txt")
+    if not path.is_file():
+        return {}
+    registry = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        name, _, file_hash = line.partition(" ")
+        registry[name] = file_hash.strip()
+    return registry
+
+
+# Parsed once; the hashes are fixed for a given installed package version.
+_REGISTRY = _load_registry()
+
+
+def _pooch() -> pooch.Pooch:
+    """Build a pooch fetcher pointed at the current cache dir and Jetstream2."""
+    # No env= here: _cache_root() already resolves CLIMKERN_DATA_DIR and the
+    # set_options(cache_dir=...) override into the path. Passing env= would let
+    # the environment variable silently override an explicit cache_dir.
+    return pooch.create(
+        path=_cache_root(),
+        base_url=JS2_HTTPS_BASE,
+        registry=_REGISTRY or None,
+    )
+
+
+def _version_tuple(version: str) -> tuple[int, ...]:
+    """Break up the version string by periods and convert
+    to a tuple for better comparison.
+    """
+    parts = []
+    for piece in str(version).split("."):
+        try:
+            parts.append(int(piece))
+        except ValueError:
+            parts.append(0)
+    return tuple(parts)
+
+
+_version_checked = False
+
+
+def _check_remote_version() -> None:
+    """Warn once per session if a newer kernel data release exists on Zenodo.
+
+    Best-effort and silent on any failure (offline, API change, ...) so it can
+    never block data access.
+    """
+    global _version_checked
+    if _version_checked or not OPTIONS["version_check"]:
+        return
+    _version_checked = True  # set first: a failed/slow check must not retry
     try:
-        data = xr.open_dataset(files("climkern").joinpath(path))
+        url = f"https://zenodo.org/api/records/{ZENODO_CONCEPT_ID}"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            latest = json.load(resp)["metadata"]["version"]
+        if _version_tuple(latest) > _version_tuple(DATA_VERSION):
+            warnings.warn(
+                f"A newer ClimKern kernel dataset (v{latest}) is available; this "
+                f"ClimKern pins v{DATA_VERSION}. Upgrade ClimKern for the latest "
+                "kernels, or silence this with "
+                "climkern.set_options(version_check=False).",
+                stacklevel=2,
+            )
+    except Exception:
+        pass  # version check is advisory only; never break on it
+
+
+def _open_dataset(relpath: str, **kwargs: object) -> xr.Dataset:
+    """Open a kernel/tutorial netCDF per the current ``data_source`` option.
+
+    ``relpath`` is the path below the data root, e.g.
+    ``"kernels/GFDL/TOA_GFDL_Kerns.nc"`` or ``"tutorial_data/ctrl.nc"``.
+    """
+    _check_remote_version()
+    source = OPTIONS["data_source"]
+
+    if source == "stream":
+        import fsspec  # lazy: only needed for streaming
+
+        url = JS2_HTTPS_BASE + relpath
+        # netCDF4's C library cannot read a Python file object, so a streamed
+        # HDF5 file must be opened with the h5netcdf engine.
+        return xr.open_dataset(
+            fsspec.filesystem("https").open(url), engine="h5netcdf", **kwargs
+        )
+
+    # Both "cache" and "local" read from disk. Honor an existing pre-download in
+    # the old package data/ dir first, so users who downloaded before the cache
+    # moved to pooch.os_cache() don't suddenly their kernels.
+    legacy = files("climkern").joinpath("data/" + relpath)
+    if legacy.is_file():
+        return xr.open_dataset(legacy, **kwargs)
+
+    if source == "local":
+        path = _cache_root() / relpath
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"{relpath} not found in the local cache ({_cache_root()}). Run "
+                "climkern.download() or use data_source='cache' or 'stream'."
+            )
+        return xr.open_dataset(path, **kwargs)
+
+    # default "cache": pooch serves from / downloads to the cache dir, verifying
+    # hashes so a corrected kernel in a new release is re-fetched automatically.
+    return xr.open_dataset(_pooch().fetch(relpath), **kwargs)
+
+
+def get_kern(name: str, loc: str = "TOA") -> xr.Dataset:
+    """Read in a radiative kernel, from the local cache, a stream, or disk.
+
+    The source is controlled globally by ``climkern.set_options(data_source=...)``
+    (default: cache from Jetstream2 on first use). See :func:`climkern.set_options`.
+    """
+    relpath = f"kernels/{name}/{loc}_{name}_Kerns.nc"
+    try:
+        data = _open_dataset(relpath)
     except ValueError:
-        data = xr.open_dataset(files("climkern").joinpath(path), decode_times=False)
+        data = _open_dataset(relpath, decode_times=False)
     return check_coords(data)
 
 

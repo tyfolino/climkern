@@ -32,11 +32,53 @@ Finally, install ClimKern with [pip](https://pip.pypa.io/en/stable/#):
 
 `pip install climkern`
 
-Once installed, ClimKern requires kernels found on [Zenodo](https://zenodo.org/doi/10.5281/zenodo.10223376). These kernels (and tutorial data) are stored separately because of PyPI size limitations. You can download the kernels easily using the download script included in the package:
+Once installed, ClimKern needs radiative kernels and (optionally) tutorial data, which are
+stored separately from the package because of PyPI size limitations (they total
+~5 GB). **You no longer have to download everything up front.** By default,
+ClimKern fetches each kernel/tutorial file *on demand* from Project Pythia's
+[Jetstream2](https://jetstream-cloud.org/) object store the first time you use
+it, caches it locally, and reuses the cached copy afterwards. The full dataset is also archived on
+[Zenodo](https://doi.org/10.5281/zenodo.10223376) (please cite it if you use the
+kernels).
+
+If you would rather grab the full dataset in one shot (for offline use), the
+download script still works and now unpacks into the same cache:
 
 `python -m climkern download`
 
-Note: The kernels & tutorial data are approximately 5 GB.
+### Streaming vs. caching
+
+ClimKern's data source is controlled globally with `ck.set_options(...)` or the `CLIMKERN_DATA_SOURCE` environment
+variable:
+
+```python
+import climkern as ck
+
+ck.set_options(data_source="cache")   # default: download-on-demand + reuse
+ck.set_options(data_source="stream")  # read straight from Jetstream2, write nothing to disk
+ck.set_options(data_source="local")   # only use already-downloaded files (offline)
+
+# temporary override:
+with ck.set_options(data_source="stream"):
+    kern = ck.tutorial_data("ctrl")
+```
+
+- **Where the cache lives:** a per-OS cache directory (e.g. `~/.cache/climkern`
+  on Linux), *not* your home or site-packages directory. Override it with
+  `ck.set_options(cache_dir="/path")` or the `CLIMKERN_DATA_DIR` environment
+  variable.
+- **On HPC or small home quotas:** `~/.cache` sits on your home filesystem,
+  which clusters often keep small. Set `CLIMKERN_DATA_DIR` to scratch or project
+  storage (e.g. in your `.bashrc` or job script) so kernels don't fill your home
+  directory — for example `export CLIMKERN_DATA_DIR=$SCRATCH/climkern`. Because
+  ClimKern caches per file, you typically store only the kernels you use, not the
+  full 5 GB.
+- **`stream`** writes nothing to disk.
+- **Staying current:** cached files are verified against hashes shipped with the
+  package, so if a kernel is corrected in a new ClimKern release, the fixed file
+  is re-downloaded automatically when you upgrade. ClimKern also warns once per
+  session if a newer kernel dataset is available (disable with
+  `ck.set_options(version_check=False)`).
 
 > **IMPORTANT:** SSL Certificate Errors
 > It is possible to get an SSL certificate error when trying to run the download script. You may try updating your certificate authorities with `pip install --upgrade certifi`.
